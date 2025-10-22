@@ -1,0 +1,113 @@
+/* frontend/src/App.css */
+.App {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.App-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.connected {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.disconnected {
+  color: #f87171;
+  font-weight: bold;
+}
+
+.App-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  background: #f3f4f6;
+  padding: 20px;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: #ffffff;
+}
+
+.activity-library {
+  height: 100%;
+}
+
+.activity-library h2 {
+  margin-top: 0;
+  color: #374151;
+  font-size: 18px;
+  border-bottom: 2px solid #667eea;
+  padding-bottom: 10px;
+}
+
+.activity-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.activity-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.activity-card h4 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+}
+
+.activity-card p {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.graph-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-canvas h2 {
+  margin-top: 0;
+  color: #374151;
+}
+
+/* ReactFlow container styling */
+.react-flow__container {
+  background: #fafafa;
+}
+
+.react-flow__node {
+  font-size: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: #667eea;
+  border: 2px solid #fff;
+}
