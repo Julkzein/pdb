@@ -1,0 +1,1 @@
+This folder represents the advancements from which I have taken up project. I am using them as they represent some powerful logic. 

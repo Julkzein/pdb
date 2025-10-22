@@ -1,0 +1,16 @@
+This folder contains all input data.
+The data consist of the general desription (pre-instantiation) of the activities in the available library.
+They are stored in a csv file with a first-line-header:
+Name,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions, def plane
+
+Each column is described below. Three columns are optionnals and marked as "opt".
+
+    name:           A string representing the activity. It is better if it fits in 15 caracters but the new GUI can handle longer words. Look at TextShortener.py for more information.
+    p-condition:    A tuple of two numbers representing (the required fluency, the required depth) in order to start the activity.
+opt min p-effect:   A tuple representing the minimal (fluency increase, depth increase) if the activity is done during its minimal time.
+opt min time:       A minimal number of minutes during which the activity can be done (with minimal effect)
+    max p-effect:   A tuple representing the maximal (fluency increase, depth increase) if the activity is done during its maximal time.
+    max time:       A maximal number of minutes during which the activity can be done (with maximal effect)
+opt def time:       The default time. Note that the default effect is a linear interpolation of the defined extremes.
+    max repetitions:The maximal number of repetitions. If reached, the user sees a warning recommending not to add this activity.
+    def plane:      A string representing in which "plane" the activity takes place according to the Orchestration Graphs book. The string should be present in the global variable PLANE_NAMES from the params.py parameters file.
