@@ -1,0 +1,33 @@
+.timeline-container {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  overflow-x: auto;
+}
+
+.drop-zone {
+  flex-shrink: 0;
+  min-height: 40px;
+}
+
+.drop-zone.selected {
+  background: #e0f2fe;
+  border-radius: 4px;
+}
+
+.drop-zone.dragging-over {
+  background: #bfdbfe;
+  border-radius: 4px;
+}
+
+.activity-block {
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  user-select: none;
+}
+
+.activity-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
