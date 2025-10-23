@@ -1,703 +1,603 @@
-# Fixed backend/app.py
-# Cleaned import flow, fixed try/except nesting, consistent fallbacks,
-# and small robustness improvements (CSV parsing, OG_AVAILABLE flag).
+# -*- coding: utf-8 -*-
+"""
+Flask REST API for Orchestration Graph Engine
+Uses pure Python core modules (no Qt dependencies)
+"""
 
 import os
 import sys
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-import pandas as pd
+from datetime import datetime
+from flask import Flask, jsonify, request  # type: ignore
+from flask_cors import CORS  # type: ignore
 
-# Add core directory to path so imports like `from core.X import Y` work
+# Add core directory to path
 core_dir = os.path.join(os.path.dirname(__file__), 'core')
 if core_dir not in sys.path:
-    sys.path.append(core_dir)
+    sys.path.insert(0, core_dir)
 
-# Feature-availability flag
-OG_AVAILABLE = False
+# Import pure Python modules
+from pValues_pure import pVal  # type: ignore
+from Activity_pure import Library  # type: ignore
+from OrchestrationGraph_pure import OrchestrationGraphData  # type: ignore
+from visualizer import generate_state_space_graph  # type: ignore
 
-# Try to import orchestration-related classes from your repo; provide
-# sensible fallbacks when they are missing so the backend still runs.
-InstantiatedActivity = None
-Activity = None
-OrchestrationGraph = None
-
-# Attempt to load cleaned classes first, then fall back to originals.
-try:
-    try:
-        # Prefer cleaned versions if they exist
-        from InstantiatedAct_cleaned import InstantiatedActivity, InstantiatedActData
-        from Activity_cleaned import Activity, ActivityData
-        OG_AVAILABLE = True
-        print("✅ Imported cleaned InstantiatedAct and Activity classes")
-    except Exception:
-        # Try original module names (common case)
-        try:
-            from InstantiatedAct import InstantiatedActData as InstantiatedActivity
-            from Activity import ActivityData as Activity
-            OG_AVAILABLE = True
-            print("✅ Imported original InstantiatedAct and Activity modules")
-        except Exception:
-            # Leave OG_AVAILABLE False; we'll provide basic fallbacks below
-            print("⚠️  Could not import InstantiatedAct/Activity modules; using simple fallbacks")
-
-    # Optional params module
-    try:
-        import params
-        print("✅ Imported params")
-    except Exception:
-        # params is optional; continue without it
-        pass
-
-except Exception as e:
-    # This outer try/except is defensive and should not usually trigger,
-    # but if it does, we will continue in limited mode.
-    print(f"⚠️  Unexpected import error: {e}")
-
-# Now import OrchestrationGraph with preference for cleaned, then original.
-try:
-    try:
-        from OrchestrationGraph_cleaned import OrchestrationGraph
-        print("✅ Using cleaned OrchestrationGraph (no Qt dependencies)")
-    except Exception:
-        try:
-            # Original OrchestrationGraph may depend on Qt; try to mock Qt if needed
-            import qt_compat  # this may be a local shim; if missing, this will fail
-            from OrchestrationGraph import OrchestrationGraph
-            print("⚠️ Using original OrchestrationGraph with qt_compat shim")
-        except Exception:
-            # Final fallback: lightweight dummy implementation
-            print("❌ Could not import OrchestrationGraph; using dummy fallback implementation")
-            class OrchestrationGraph:
-                def __init__(self, *args, **kwargs):
-                    self.activities = []
-
-                def add_activity(self, activity):
-                    self.activities.append(activity)
-
-                def to_dict(self):
-                    # Try to serialize activities cleanly
-                    serialized = []
-                    for a in self.activities:
-                        try:
-                            # If activity has to_dict, use it
-                            serialized.append(a.to_dict())
-                        except Exception:
-                            serialized.append(a)
-                    return {"activities": serialized}
-
-except Exception as e:
-    # Extremely defensive fallback (shouldn't be reached)
-    print(f"⚠️  Unexpected error while setting up OrchestrationGraph fallback: {e}")
-    class OrchestrationGraph:
-        def __init__(self):
-            self.activities = []
-        def add_activity(self, activity):
-            self.activities.append(activity)
-        def to_dict(self):
-            return {"activities": self.activities}
-
-# If InstantiatedActivity wasn't imported from your modules, provide a simple class
-if InstantiatedActivity is None:
-    class InstantiatedActivity:
-        def __init__(self, name: str, duration: int):
-            self.name = name
-            self.duration = duration
-            # Keep 'time' for compatibility with earlier code
-            self.time = duration
-
-        def to_dict(self):
-            return {"name": self.name, "duration": self.duration, "time": self.time}
-
-# Flask app setup
+# Create Flask app
 app = Flask(__name__)
-CORS(app, origins="*")  # Allow all origins for development only
+CORS(app, origins="*")  # Allow all origins for development
 
-# Global variable to store the current orchestration graph
+# Global state
+library = None
 current_graph = None
 
+# Configuration
+DEFAULT_TIME_BUDGET = 120
+DEFAULT_START = (0.0, 0.0)
+DEFAULT_GOAL = (0.9, 0.9)
+
+
+# ==================== INITIALIZATION ==================== #
+
+def initialize_library():
+    """Load activity library from CSV"""
+    global library
+
+    csv_path = os.path.join(os.path.dirname(__file__), 'inputData', 'interpolation_2D_library.csv')
+
+    if not os.path.exists(csv_path):
+        print(f"ERROR: CSV not found at {csv_path}")
+        return False
+
+    try:
+        library = Library(csv_path)
+        print(f"Loaded {library.getLength()} activities")
+        return True
+    except Exception as e:
+        print(f"Error loading library: {e}")
+        return False
+
+
+def initialize_graph():
+    """Create a new orchestration graph"""
+    global current_graph
+
+    if library is None:
+        print("Cannot initialize graph: library not loaded")
+        return False
+
+    try:
+        start = pVal(DEFAULT_START)
+        goal = pVal(DEFAULT_GOAL)
+        current_graph = OrchestrationGraphData(library, DEFAULT_TIME_BUDGET, start, goal)
+        print(f"Created new orchestration graph")
+        return True
+    except Exception as e:
+        print(f"Error initializing graph: {e}")
+        return False
+
+
+# Initialize on startup
+initialize_library()
+initialize_graph()
+
+
+# ==================== BASIC ENDPOINTS ==================== #
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Simple endpoint to test if backend is running"""
+    """Health check endpoint"""
     return jsonify({
         "status": "healthy",
-        "message": "Backend is running!",
-        "orchestration_available": OG_AVAILABLE
+        "message": "Backend is running with pure Python orchestration engine",
+        "library_loaded": library is not None,
+        "library_size": library.getLength() if library else 0,
+        "graph_initialized": current_graph is not None
     })
 
 
 @app.route('/api/activities', methods=['GET'])
 def get_activities():
-    """Load and return activities from CSV or use defaults"""
-    try:
-        csv_path = os.path.join(os.path.dirname(__file__), 'inputData', 'interpolation_2D_library.csv')
-        if os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-            activities = []
+    """Get all activities from library"""
+    if library is None:
+        return jsonify({"error": "Library not loaded"}), 500
 
-            # Prefer explicit 'name' column if present
-            if 'name' in df.columns:
-                for index, row in df.iterrows():
-                    try:
-                        duration = int(row.get('duration', 30)) if not pd.isna(row.get('duration', 30)) else 30
-                    except Exception:
-                        duration = 30
+    activities = []
+    for act in library.listeActData():
+        activities.append({
+            'idx': act.idx,
+            'name': act.name,
+            'description': act.getDescription(),
+            'duration': act.defT,
+            'minTime': act.minT,
+            'maxTime': act.maxT,
+            'canChangeTime': act.canChangeTime,
+            'maxRepetition': act.maxRepetition,
+            'defPlane': act.defPlane,
+            'planeName': act.planeToString(act.defPlane),
+            'planeDescription': act.planeDescription(act.defPlane),
+            'pcond': act.pcond.to_dict(),
+            'peffect': act.peffect.to_dict()
+        })
 
-                    activity = {
-                        'id': str(index),
-                        'name': row['name'],
-                        'type': row.get('type', 'general'),
-                        'duration': duration,
-                        'color': row.get('color', '#4CAF50'),
-                        'description': row.get('description', '')
-                    }
-                    activities.append(activity)
-            else:
-                # Heuristic parsing if CSV is in a custom format
-                for index, row in df.iterrows():
-                    # Use first column as name when possible
-                    name = row.iloc[0] if len(row) > 0 and not pd.isna(row.iloc[0]) else f'Activity {index}'
-                    try:
-                        defT = int(row.iloc[6]) if len(row) > 6 and not pd.isna(row.iloc[6]) else 30
-                    except Exception:
-                        defT = 30
-
-                    activity = {
-                        'id': str(index),
-                        'name': name,
-                        'type': 'general',
-                        'duration': defT,
-                        'color': '#4CAF50' if index % 2 == 0 else '#2196F3',
-                        'description': 'Activity from library'
-                    }
-                    activities.append(activity)
-
-            print(f"✅ Loaded {len(activities)} activities from CSV")
-            return jsonify(activities)
-        else:
-            print(f"⚠️  CSV not found at {csv_path}, using default activities")
-
-    except Exception as e:
-        print(f"⚠️  Error loading CSV: {e}")
-
-    # Default fallback activities
-    default_activities = [
-        {'id': '1', 'name': 'Introduction', 'type': 'general', 'duration': 15, 'color': '#4CAF50'},
-        {'id': '2', 'name': 'Lecture', 'type': 'general', 'duration': 30, 'color': '#2196F3'},
-        {'id': '3', 'name': 'Group Work', 'type': 'general', 'duration': 25, 'color': '#FF9800'},
-        {'id': '4', 'name': 'Discussion', 'type': 'general', 'duration': 20, 'color': '#9C27B0'},
-        {'id': '5', 'name': 'Break', 'type': 'general', 'duration': 10, 'color': '#607D8B'},
-        {'id': '6', 'name': 'Conclusion', 'type': 'general', 'duration': 15, 'color': '#E91E63'},
-    ]
-    return jsonify(default_activities)
+    return jsonify(activities)
 
 
-@app.route('/api/orchestration/create', methods=['POST'])
-def create_orchestration():
-    """Create a new orchestration graph"""
-    global current_graph
-    try:
-        data = request.get_json(force=True) or {}
+# ==================== GRAPH STATE ENDPOINTS ==================== #
 
-        # Create new orchestration graph
-        current_graph = OrchestrationGraph()
+@app.route('/api/graph/state', methods=['GET'])
+def get_graph_state():
+    """Get complete orchestration graph state"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
 
-        # Add activities if provided
-        for activity_data in data.get('activities', []):
-            if OG_AVAILABLE and isinstance(activity_data, dict):
-                # Try to instantiate your domain class if available
-                try:
-                    activity = InstantiatedActivity(
-                        name=activity_data.get('name'),
-                        duration=activity_data.get('duration', 30)
-                    )
-                    current_graph.add_activity(activity)
-                except Exception:
-                    # If instantiation fails, store the raw dict
-                    current_graph.add_activity(activity_data)
-            else:
-                # Simple mode: store the dict or provided object
-                current_graph.add_activity(activity_data)
+    return jsonify(current_graph.to_dict())
 
+
+@app.route('/api/graph/reset', methods=['POST'])
+def reset_graph():
+    """Reset graph to empty state"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    current_graph.reset()
+
+    return jsonify({
+        "success": True,
+        "message": "Graph reset",
+        "state": current_graph.to_dict()
+    })
+
+
+# ==================== ACTIVITY MANIPULATION ENDPOINTS ==================== #
+
+@app.route('/api/graph/insert', methods=['POST'])
+def insert_activity():
+    """
+    Insert an activity at a specific position
+
+    Body:
+        actIdx: activity index in library
+        position: insertion position (0 = before first)
+        plane: optional plane (0=Indiv, 1=Team, 2=Class)
+        time: optional custom duration
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+
+    actIdx = data.get('actIdx')
+    position = data.get('position', 0)
+    plane = data.get('plane')  # None = use default
+    time = data.get('time')  # None = use default
+
+    if actIdx is None:
+        return jsonify({"error": "actIdx required"}), 400
+
+    success = current_graph.insert(actIdx, position, plane, time)
+
+    if success:
         return jsonify({
             "success": True,
-            "message": "Graph created",
-            "graph_id": id(current_graph)
+            "message": f"Inserted activity at position {position}",
+            "state": current_graph.to_dict()
         })
-    except Exception as e:
-        print(f"Error creating orchestration: {e}")
-        return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Failed to insert activity"}), 400
 
 
-@app.route('/api/orchestration/validate', methods=['POST'])
-def validate_orchestration():
-    """Validate the current orchestration"""
-    global current_graph
+@app.route('/api/graph/remove', methods=['POST'])
+def remove_activity():
+    """
+    Remove activity at position
+
+    Body:
+        position: position to remove
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+    position = data.get('position')
+
+    if position is None:
+        return jsonify({"error": "position required"}), 400
+
+    success = current_graph.remove(position)
+
+    if success:
+        return jsonify({
+            "success": True,
+            "message": f"Removed activity at position {position}",
+            "state": current_graph.to_dict()
+        })
+    else:
+        return jsonify({"error": "Failed to remove activity"}), 400
+
+
+@app.route('/api/graph/change-plane', methods=['POST'])
+def change_plane():
+    """
+    Change the plane of an activity at a given position
+
+    Body:
+        position: position of activity to modify
+        plane: new plane (0=Indiv, 1=Team, 2=Class)
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+    position = data.get('position')
+    new_plane = data.get('plane')
+
+    if position is None or new_plane is None:
+        return jsonify({"error": "position and plane required"}), 400
+
+    # Validate position
+    if position < 0 or position >= len(current_graph.listOfFixedInstancedAct):
+        return jsonify({"error": "Invalid position"}), 400
+
+    # Validate plane
+    if new_plane not in [0, 1, 2]:
+        return jsonify({"error": "Invalid plane (must be 0, 1, or 2)"}), 400
+
+    # Update the plane
+    inst = current_graph.listOfFixedInstancedAct[position]
+    old_plane = inst.plane
+    inst.plane = new_plane
+
+    print(f"Changed plane for {inst.actData.name} at position {position}: {old_plane} → {new_plane}")
+
+    return jsonify({
+        "success": True,
+        "message": f"Changed plane from {old_plane} to {new_plane}",
+        "state": current_graph.to_dict()
+    })
+
+
+@app.route('/api/graph/exchange', methods=['POST'])
+def exchange_activities():
+    """
+    Swap two activities
+
+    Body:
+        posA: first position
+        posB: second position
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+    posA = data.get('posA')
+    posB = data.get('posB')
+
+    if posA is None or posB is None:
+        return jsonify({"error": "posA and posB required"}), 400
+
+    success = current_graph.exchange(posA, posB)
+
+    if success:
+        return jsonify({
+            "success": True,
+            "message": f"Exchanged positions {posA} and {posB}",
+            "state": current_graph.to_dict()
+        })
+    else:
+        return jsonify({"error": "Failed to exchange activities"}), 400
+
+
+# ==================== GAP & RECOMMENDATION ENDPOINTS ==================== #
+
+@app.route('/api/graph/gaps', methods=['GET'])
+def get_gaps():
+    """Get list of hard gaps"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    return jsonify({
+        "hardGapsList": current_graph.hardGapsList,
+        "hardGapsCount": current_graph.hardGapsCount,
+        "remainingGapsDistance": current_graph.remainingGapsDistance
+    })
+
+
+@app.route('/api/graph/gap/focus', methods=['POST'])
+def set_gap_focus():
+    """
+    Set focus on a specific gap
+
+    Body:
+        gapIndex: gap position to focus on (-1 to clear)
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+    gapIndex = data.get('gapIndex', -1)
+
+    current_graph.setGapFocus(gapIndex)
+
+    # Get recommendations
+    recommendations = []
+    for ctx in current_graph.currentListForSelectedGap:
+        recommendations.append(ctx.to_dict())
+
+    return jsonify({
+        "gapIndex": gapIndex,
+        "recommendations": recommendations,
+        "isHardGap": gapIndex in current_graph.hardGapsList if gapIndex >= 0 else False
+    })
+
+
+@app.route('/api/graph/gap/recommendations', methods=['POST'])
+def get_gap_recommendations():
+    """
+    Get recommendations for a specific gap (same as focus but doesn't change state)
+
+    Body:
+        gapIndex: gap position
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+    gapIndex = data.get('gapIndex', 0)
+
+    # Temporarily evaluate this gap
+    evaluations = []
+    for actIdx in range(library.getLength()):
+        ctx = current_graph.evaluateFor(actIdx, gapIndex)
+        if ctx is not None:
+            evaluations.append(ctx.to_dict())
+
+    return jsonify({
+        "gapIndex": gapIndex,
+        "recommendations": evaluations
+    })
+
+
+# ==================== AUTO-ADD ENDPOINTS ==================== #
+
+@app.route('/api/graph/auto-add', methods=['POST'])
+def auto_add():
+    """Automatically add best activity to worst gap"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    success = current_graph.autoAdd()
+
+    if success:
+        return jsonify({
+            "success": True,
+            "message": "Added recommended activity",
+            "state": current_graph.to_dict()
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "message": "No valid activities to add"
+        }), 400
+
+
+@app.route('/api/graph/auto-add-from-gap', methods=['POST'])
+def auto_add_from_gap():
+    """Add best activity to currently selected gap"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    success = current_graph.autoAddFromSelectedGap()
+
+    if success:
+        return jsonify({
+            "success": True,
+            "message": "Added activity to selected gap",
+            "state": current_graph.to_dict()
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "message": "No valid activities to add or no gap selected"
+        }), 400
+
+
+# ==================== SAVE/LOAD ENDPOINTS ==================== #
+
+@app.route('/api/graph/save', methods=['POST'])
+def save_graph():
+    """
+    Save graph to pickle file
+
+    Body:
+        filename: filename (optional, defaults to timestamp)
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    data = request.get_json()
+    filename = data.get('filename')
+
+    if not filename:
+        filename = f"orchestration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pickle"
+
+    # Create saves directory
+    save_dir = os.path.join(os.path.dirname(__file__), 'saved_orchestrations')
+    os.makedirs(save_dir, exist_ok=True)
+
+    save_path = os.path.join(save_dir, filename)
+
     try:
-        if current_graph is None:
-            return jsonify({"valid": False, "errors": ["No graph created yet"]})
-
-        # Placeholder validation; replace with real validators when available
-        validation_result = {
-            "valid": True,
-            "errors": [],
-            "warnings": []
-        }
-
-        return jsonify(validation_result)
-    except Exception as e:
-        print(f"Error validating orchestration: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/orchestration/export', methods=['GET'])
-def export_orchestration():
-    """Export the current orchestration"""
-    global current_graph
-    try:
-        if current_graph is None:
-            return jsonify({"error": "No graph to export"}), 400
-
-        if hasattr(current_graph, 'to_dict'):
-            export_data = current_graph.to_dict()
-        else:
-            export_data = {
-                "activities": getattr(current_graph, 'activities', []),
-                "connections": [],
-            }
-
-        return jsonify(export_data)
-    except Exception as e:
-        print(f"Error exporting orchestration: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/orchestration/recommend', methods=['POST'])
-def recommend_activity():
-    """Get recommended activities for a gap"""
-    global current_graph
-    try:
-        data = request.json
-        gap_index = data.get('gapIndex', 0)
-        
-        # In limited mode, return a simple recommendation
-        if not OG_AVAILABLE or current_graph is None:
-            return jsonify({
-                "recommended": {
-                    "id": "0",
-                    "name": "Introduction",
-                    "reason": "Good starting activity"
-                }
-            })
-        
-        # If full orchestration is available, use the actual recommendation logic
-        if hasattr(current_graph, 'setGapFocus'):
-            current_graph.setGapFocus(gap_index)
-            # Get recommendations from the evaluateFor method
-            if hasattr(current_graph, 'data'):
-                recommendations = current_graph.data.currentListForSelectedGap
-                # Find the best one
-                for rec in recommendations:
-                    if hasattr(rec, 'isBest') and rec.isBest:
-                        return jsonify({
-                            "recommended": {
-                                "id": str(rec.myActData.idx),
-                                "name": rec.myActData.name,
-                                "score": rec.myScore
-                            }
-                        })
-        
-        return jsonify({"recommended": None})
-    except Exception as e:
-        print(f"Error getting recommendation: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/orchestration/save', methods=['POST'])
-def save_orchestration():
-    """Save orchestration to file"""
-    global current_graph
-    try:
-        data = request.json
-        filename = data.get('filename', 'orchestration.json')
-        
-        # Get the export data
-        export_data = {
-            "activities": [],
-            "connections": [],
-            "metadata": {
-                "created": str(datetime.now()),
-                "version": "1.0"
-            }
-        }
-        
-        if current_graph and hasattr(current_graph, 'to_dict'):
-            export_data = current_graph.to_dict()
-        
-        # Save to file
-        save_path = os.path.join('saved_orchestrations', filename)
-        os.makedirs('saved_orchestrations', exist_ok=True)
-        
-        with open(save_path, 'w') as f:
-            json.dump(export_data, f, indent=2)
-        
+        current_graph.saveAsFile(save_path)
         return jsonify({
             "success": True,
             "filename": filename,
+            "path": save_path,
             "message": f"Saved to {filename}"
         })
     except Exception as e:
-        print(f"Error saving: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Failed to save: {str(e)}"}), 500
 
-# Add these routes to backend/app.py
 
-@app.route('/api/orchestration/auto-add', methods=['POST'])
-def auto_add_activity():
-    """Automatically add the best activity to fill the largest gap"""
+@app.route('/api/graph/load', methods=['POST'])
+def load_graph():
+    """
+    Load graph from pickle file
+
+    Body:
+        filename: filename to load
+    """
     global current_graph
-    try:
-        if not OG_AVAILABLE or current_graph is None:
-            # Fallback for limited mode
-            return jsonify({
-                "success": False,
-                "message": "Orchestration engine not available"
-            })
-        
-        # Find the largest gap and add the best activity
-        if hasattr(current_graph, 'autoAdd'):
-            current_graph.autoAdd()
-            
-            # Return the updated graph
-            return jsonify({
-                "success": True,
-                "graph": current_graph.to_dict(),
-                "message": "Added recommended activity"
-            })
-        
-        return jsonify({"success": False, "message": "Method not available"})
-    except Exception as e:
-        print(f"Error in auto-add: {e}")
-        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/orchestration/evaluate-gaps', methods=['POST'])
-def evaluate_gaps():
-    """Evaluate all gaps in the current orchestration"""
-    global current_graph
-    try:
-        if not OG_AVAILABLE or current_graph is None:
-            return jsonify({"gaps": []})
-        
-        if hasattr(current_graph, 'data'):
-            gaps = current_graph.data.evaluate_gaps()
-            return jsonify({
-                "gaps": [{"distance": d, "index": i} for d, i in gaps],
-                "hardGapsCount": current_graph.data.hardGapsCount
-            })
-        
-        return jsonify({"gaps": []})
-    except Exception as e:
-        print(f"Error evaluating gaps: {e}")
-        return jsonify({"error": str(e)}), 500
+    if library is None:
+        return jsonify({"error": "Library not loaded"}), 400
 
-@app.route('/api/orchestration/activities-for-gap', methods=['POST'])
-def get_activities_for_gap():
-    """Get recommended activities for a specific gap"""
-    global current_graph
-    try:
-        data = request.json
-        gap_index = data.get('gapIndex', 0)
-        
-        if not OG_AVAILABLE or current_graph is None:
-            return jsonify({"activities": []})
-        
-        if hasattr(current_graph, 'setGapFocus'):
-            current_graph.setGapFocus(gap_index)
-            
-            # Get the evaluated activities for this gap
-            if hasattr(current_graph, 'data'):
-                activities = []
-                for ctx_act in current_graph.data.currentListForSelectedGap:
-                    act_dict = {
-                        "name": ctx_act.myActData.name,
-                        "score": ctx_act.myScore,
-                        "isBest": ctx_act.isBest,
-                        "flags": {
-                            "exhausted": ctx_act.myFlags.exhausted,
-                            "tooLong": ctx_act.myFlags.tooLong,
-                            "noProgress": ctx_act.myFlags.noProgress
-                        }
-                    }
-                    activities.append(act_dict)
-                
-                # Sort by score (best first)
-                activities.sort(key=lambda x: x['score'] if x['score'] else -999, reverse=True)
-                return jsonify({"activities": activities})
-        
-        return jsonify({"activities": []})
-    except Exception as e:
-        print(f"Error getting activities for gap: {e}")
-        return jsonify({"error": str(e)}), 500
+    data = request.get_json()
+    filename = data.get('filename')
 
-@app.route('/api/orchestration/load', methods=['POST'])
-def load_orchestration():
-    """Load orchestration from file"""
-    global current_graph
+    if not filename:
+        return jsonify({"error": "filename required"}), 400
+
+    save_dir = os.path.join(os.path.dirname(__file__), 'saved_orchestrations')
+    load_path = os.path.join(save_dir, filename)
+
+    if not os.path.exists(load_path):
+        return jsonify({"error": f"File not found: {filename}"}), 404
+
     try:
-        data = request.json
-        filename = data.get('filename', 'orchestration.json')
-        
-        save_path = os.path.join('saved_orchestrations', filename)
-        
-        if not os.path.exists(save_path):
-            return jsonify({"error": "File not found"}), 404
-        
-        with open(save_path, 'r') as f:
-            loaded_data = json.load(f)
-        
-        # Recreate the graph from loaded data
-        # This is simplified - you'd need to properly reconstruct the graph
-        current_graph = OrchestrationGraph()
-        
+        current_graph = OrchestrationGraphData.loadFromFile(load_path, library)
         return jsonify({
             "success": True,
-            "data": loaded_data,
-            "message": f"Loaded from {filename}"
+            "filename": filename,
+            "message": f"Loaded from {filename}",
+            "state": current_graph.to_dict()
         })
     except Exception as e:
-        print(f"Error loading: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Failed to load: {str(e)}"}), 500
 
-@app.route('/api/orchestration/state', methods=['GET'])
-def get_orchestration_state():
-    """Get current orchestration state"""
-    global current_graph
-    try:
-        if current_graph and hasattr(current_graph, 'data'):
-            return jsonify({
-                "nodes": [
-                    {
-                        "id": f"node-{i}",
-                        "name": act.actData.name if hasattr(act, 'actData') else 'Activity',
-                        "time": act.time if hasattr(act, 'time') else 30,
-                        "startsAfter": act.startsAfter if hasattr(act, 'startsAfter') else 0
-                    }
-                    for i, act in enumerate(current_graph.data.listOfFixedInstancedAct)
-                ],
-                "totalTime": current_graph.data.totTime,
-                "timeBudget": current_graph.data.tBudget,
-                "hardGapsCount": current_graph.data.hardGapsCount,
-                "hardGapsList": current_graph.data.hardGapsList,
-                "remainingGapsDistance": current_graph.data.remainingGapsDistance
+
+@app.route('/api/graph/saved-files', methods=['GET'])
+def get_saved_files():
+    """Get list of saved orchestration files"""
+    save_dir = os.path.join(os.path.dirname(__file__), 'saved_orchestrations')
+
+    if not os.path.exists(save_dir):
+        return jsonify([])
+
+    files = []
+    for filename in os.listdir(save_dir):
+        if filename.endswith('.pickle'):
+            filepath = os.path.join(save_dir, filename)
+            stat = os.stat(filepath)
+            files.append({
+                'filename': filename,
+                'size': stat.st_size,
+                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat()
             })
+
+    # Sort by modification time (newest first)
+    files.sort(key=lambda x: x['modified'], reverse=True)
+
+    return jsonify(files)
+
+
+# ==================== PRINT/EXPORT ENDPOINTS ==================== #
+
+@app.route('/api/graph/export-json', methods=['GET'])
+def export_json():
+    """Export graph as JSON"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    return jsonify(current_graph.to_dict())
+
+
+@app.route('/api/graph/print-text', methods=['GET'])
+def print_text():
+    """Get text representation of graph"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    text = str(current_graph)
+
+    return jsonify({
+        "content": text,
+        "format": "text"
+    })
+
+
+# ==================== CONFIGURATION ENDPOINTS ==================== #
+
+@app.route('/api/config/planes', methods=['GET'])
+def get_planes():
+    """Get plane names and descriptions"""
+    return jsonify({
+        "planes": [
+            {"index": 0, "name": "Indiv.", "description": "individually"},
+            {"index": 1, "name": "Team", "description": "in teams"},
+            {"index": 2, "name": "Class", "description": "as a class"}
+        ]
+    })
+
+
+@app.route('/api/config/params', methods=['GET'])
+def get_params():
+    """Get configuration parameters"""
+    return jsonify({
+        "timeBudget": DEFAULT_TIME_BUDGET,
+        "start": list(DEFAULT_START),
+        "goal": list(DEFAULT_GOAL),
+        "threshold": 0.05,
+        "precision": 0.01
+    })
+
+
+# ==================== ERROR HANDLERS ==================== #
+
+@app.route('/api/graph/visualize', methods=['GET'])
+def visualize_graph():
+    """
+    Generate 2D state-space visualization of the current graph.
+
+    Returns:
+        JSON with base64-encoded PNG image
+    """
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    try:
+        image_base64 = generate_state_space_graph(current_graph)
         return jsonify({
-            "nodes": [],
-            "totalTime": 0,
-            "timeBudget": 120,
-            "hardGapsCount": 0,
-            "hardGapsList": [],
-            "remainingGapsDistance": 0
+            "success": True,
+            "image": image_base64,
+            "format": "png"
         })
     except Exception as e:
-        print(f"Error getting state: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/orchestration/set-gap-focus', methods=['POST'])
-def set_gap_focus():
-    """Set focus on a specific gap and get recommendations for it"""
-    global current_graph
-    try:
-        data = request.json
-        gap_index = data.get('gapIndex', -1)
-        
-        if not OG_AVAILABLE or current_graph is None:
-            # Fallback mode
-            return jsonify({
-                "recommendations": [],
-                "isHardGap": False
-            })
-        
-        if hasattr(current_graph, 'setGapFocus'):
-            current_graph.setGapFocus(gap_index)
-            
-            recommendations = []
-            if hasattr(current_graph, 'data') and current_graph.data.currentListForSelectedGap:
-                for ctx_act in current_graph.data.currentListForSelectedGap:
-                    rec = {
-                        "idx": ctx_act.myActData.idx,
-                        "name": ctx_act.myActData.name,
-                        "score": ctx_act.myScore,
-                        "isBest": ctx_act.isBest,
-                        "flags": {
-                            "exhausted": ctx_act.myFlags.exhausted,
-                            "tooLong": ctx_act.myFlags.tooLong,
-                            "noProgress": ctx_act.myFlags.noProgress
-                        },
-                        "okeyToTake": ctx_act.okeyToTake()
-                    }
-                    recommendations.append(rec)
-                
-                # Sort by best first
-                recommendations.sort(key=lambda x: (
-                    not x['isBest'],  # Best first
-                    not x['okeyToTake'],  # Okay activities before not okay
-                    -x['score'] if x['score'] is not None else 999
-                ))
-            
-            is_hard_gap = gap_index in current_graph.data.hardGapsList if gap_index >= 0 else False
-            
-            return jsonify({
-                "recommendations": recommendations,
-                "isHardGap": is_hard_gap,
-                "gapIndex": gap_index
-            })
-        
-        return jsonify({"recommendations": [], "isHardGap": False})
-    except Exception as e:
-        print(f"Error setting gap focus: {e}")
-        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/orchestration/auto-add-from-gap', methods=['POST'])
-def auto_add_from_gap():
-    """Auto-add the best activity for the selected gap"""
-    global current_graph
-    try:
-        if not OG_AVAILABLE or current_graph is None:
-            return jsonify({"success": False, "message": "Not available"})
-        
-        if hasattr(current_graph, 'autoAddFromSelectedGap'):
-            current_graph.autoAddFromSelectedGap()
-            
-            # Return updated state
-            return get_orchestration_state()
-        
-        return jsonify({"success": False})
-    except Exception as e:
-        print(f"Error auto-adding: {e}")
-        return jsonify({"error": str(e)}), 500
-    
-# backend/app.py - Add this endpoint
-@app.route('/api/orchestration/technical-graph', methods=['GET'])
-def get_technical_graph():
-    """Generate the technical graph representation"""
-    global current_graph
-    
-    if not OG_AVAILABLE or current_graph is None:
-        return jsonify({"error": "Orchestration not available"}), 400
-    
-    try:
-        import matplotlib.pyplot as plt
-        import io
-        import base64
-        
-        # Create figure
-        fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # Plot activities as rectangles
-        current_pos = (0.0, 0.0)
-        positions = [current_pos]
-        
-        for act in current_graph.data.listOfFixedInstancedAct:
-            # Draw activity box
-            next_pos = (act.end.p[0], act.end.p[1])
-            
-            # Draw box
-            rect = plt.Rectangle(
-                (current_pos[0], current_pos[1]),
-                next_pos[0] - current_pos[0],
-                next_pos[1] - current_pos[1],
-                fill=False,
-                edgecolor='black'
-            )
-            ax.add_patch(rect)
-            
-            # Add label
-            ax.text(
-                (current_pos[0] + next_pos[0]) / 2,
-                (current_pos[1] + next_pos[1]) / 2,
-                act.actData.name,
-                ha='center',
-                va='center'
-            )
-            
-            positions.append(next_pos)
-            current_pos = next_pos
-        
-        # Draw hard transitions
-        for gap_idx in current_graph.data.hardGapsList:
-            if gap_idx < len(positions) - 1:
-                ax.arrow(
-                    positions[gap_idx][0], positions[gap_idx][1],
-                    positions[gap_idx + 1][0] - positions[gap_idx][0],
-                    positions[gap_idx + 1][1] - positions[gap_idx][1],
-                    color='red', width=0.002, head_width=0.02
-                )
-        
-        # Mark start and goal
-        ax.plot(0, 0, 'go', markersize=10, label='start')
-        ax.plot(0.9, 0.9, 'bx', markersize=10, label='goal')
-        
-        ax.set_xlim(-0.1, 1.0)
-        ax.set_ylim(-0.1, 1.0)
-        ax.set_xlabel('fluency')
-        ax.set_ylabel('depth')
-        ax.set_title("Technical representation of the lesson's model")
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        # Convert to base64
-        buffer = io.BytesIO()
-        plt.savefig(buffer, format='png')
-        buffer.seek(0)
-        image_base64 = base64.b64encode(buffer.read()).decode()
-        plt.close()
-        
-        return jsonify({"image": f"data:image/png;base64,{image_base64}"})
-        
-    except Exception as e:
-        print(f"Error generating graph: {e}")
-        return jsonify({"error": str(e)}), 500
+@app.errorhandler(404)
+def not_found(_):
+    return jsonify({"error": "Endpoint not found"}), 404
 
-@app.route('/api/orchestration/print', methods=['GET'])
-def print_orchestration():
-    """Generate printable version"""
-    global current_graph
-    try:
-        if current_graph is None:
-            return jsonify({"error": "No graph to print"}), 400
-        
-        # Generate a simple text representation
-        output = "ORCHESTRATION GRAPH LESSON PLAN\n"
-        output += "=" * 40 + "\n\n"
-        
-        if hasattr(current_graph, 'data'):
-            output += f"Total Time: {current_graph.data.totTime} min\n"
-            output += f"Budget: {current_graph.data.tBudget} min\n"
-            output += f"Gaps: {current_graph.data.hardGapsCount}\n\n"
-            output += "Activities:\n"
-            output += "-" * 20 + "\n"
-            
-            if hasattr(current_graph.data, 'listOfFixedInstancedAct'):
-                for i, act in enumerate(current_graph.data.listOfFixedInstancedAct):
-                    if hasattr(act, 'actData'):
-                        output += f"{i+1}. {act.actData.name} ({act.time} min)\n"
-                    else:
-                        output += f"{i+1}. Activity ({getattr(act, 'time', 30)} min)\n"
-        
-        return jsonify({
-            "content": output,
-            "format": "text"
-        })
-    except Exception as e:
-        print(f"Error printing: {e}")
-        return jsonify({"error": str(e)}), 500
-    
-    
+
+@app.errorhandler(500)
+def internal_error(_):
+    return jsonify({"error": "Internal server error"}), 500
+
+
+# ==================== MAIN ==================== #
+
 if __name__ == '__main__':
-    print("=" * 50)
-    print(" Starting Orchestration Graph Backend...")
-    print("=" * 50)
-    print(f"=Orchestration modules available: {OG_AVAILABLE}")
-    print(" Backend running at http://127.0.0.1:5000")
-    print(" Test API at: http://127.0.0.1:5000/api/health")
-    print("=" * 50)
+    print("=" * 60)
+    print("Orchestration Graph Backend (Pure Python)")
+    print("=" * 60)
+    print(f" Library loaded: {library is not None}")
+    if library:
+        print(f" Activities available: {library.getLength()}")
+    print(f" Graph initialized: {current_graph is not None}")
+    print("-" * 60)
+    print(" Running at: http://127.0.0.1:5000")
+    print(" API docs: http://127.0.0.1:5000/api/health")
+    print("=" * 60)
+    print()
+
     app.run(debug=True, port=5000, host='0.0.0.0')
