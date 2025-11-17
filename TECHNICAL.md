@@ -521,44 +521,6 @@ inst.plane = new_plane
 
 ---
 
-## Performance Considerations
-
-### Backend
-- Sequential state recalculation: O(n) where n = number of activities
-- Gap evaluation: O(n)
-- Activity evaluation: O(m × n) where m = library size, n = gaps
-- Recommendation: O(m × log m) for sorting
-
-### Frontend
-- Zustand: Minimal re-renders (subscription-based)
-- React.memo not needed (components small, fast)
-- Drag-and-drop: HTML5Backend (native performance)
-- Absolute positioning: No layout thrashing
-
----
-
-## Data Flow Example
-
-**Adding an Activity:**
-
-1. User drags "PracticeMemory" to position 0, Individual lane
-2. `onDrop` → `insertActivity(actIdx=3, position=0, plane=0)`
-3. Zustand action calls `apiService.insertActivity()`
-4. POST `/api/graph/insert` with `{actIdx:3, position:0, plane:0}`
-5. Backend:
-   - `current_graph.insert(3, 0, None, None)`
-   - Creates `InstantiatedActData` with default time/plane
-   - Inserts at position 0
-   - Calls `reEvaluateData()`:
-     - Updates all `startsAfter` times
-     - Recalculates all state progressions
-     - Evaluates gaps
-   - Returns `current_graph.to_dict()`
-6. Response: `{success: true, state: {...}}`
-7. Zustand updates `graphState`
-8. React re-renders timeline with new activity
-
----
 
 ## Configuration
 
@@ -637,18 +599,6 @@ python -m pytest tests/
 ```bash
 npm test
 ```
-
----
-
-## Future Enhancements
-
-- Activity time customization (use min/max time)
-- Gap selection interface (click gaps to see recommendations)
-- Undo/redo functionality
-- Activity search/filter in library
-- Export to PDF/JSON
-- Multi-dimensional state spaces (>2D)
-- Alternative efficiency heuristics
 
 ---
 

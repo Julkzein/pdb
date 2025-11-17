@@ -71,6 +71,16 @@ class ApiService {
     return response.data;
   }
 
+  async createActivity(activityData: any): Promise<{ success: boolean; message: string; activity: ActivityData }> {
+    const response = await this.client.post('/activities/create', activityData);
+    return response.data;
+  }
+
+  async reloadLibrary(): Promise<{ success: boolean; message: string; activity_count: number }> {
+    const response = await this.client.post('/library/reload');
+    return response.data;
+  }
+
   // ==================== GRAPH STATE ==================== //
 
   async getGraphState(): Promise<OrchestrationGraphState> {
@@ -186,10 +196,37 @@ class ApiService {
     const response = await this.client.get('/graph/print-text');
     return response.data;
   }
+
+  // ==================== LLM ENHANCEMENT ==================== //
+
+  async enhanceOrchestration(
+    orchestration: OrchestrationGraphState,
+    ageGroup: string,
+    subject: string
+  ): Promise<any> {
+    // Increase timeout for LLM requests (can be slow)
+    const response = await this.client.post(
+      '/enhance-orchestration',
+      {
+        orchestration,
+        ageGroup,
+        subject,
+      },
+      { timeout: 60000 } // 60 second timeout for LLM
+    );
+    return response.data;
+  }
 }
 
 // Export singleton instance
 export const apiService = new ApiService();
+
+// Export helper function for enhance orchestration
+export const enhanceOrchestration = (
+  orchestration: OrchestrationGraphState,
+  ageGroup: string,
+  subject: string
+) => apiService.enhanceOrchestration(orchestration, ageGroup, subject);
 
 // Export class for testing
 export default ApiService;

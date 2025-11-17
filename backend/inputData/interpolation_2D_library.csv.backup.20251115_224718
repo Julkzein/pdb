@@ -1,0 +1,11 @@
+Name,Description,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane
+TellTheClass,Teacher presents information directly to the entire class,(0.1;0.6),,,(0.4;0.2),15,,1,Class
+DesirableDifficultyProblem,Students work on challenging problems that enhance long-term retention,(0.0;0.2),,,(0.05;0.3),15,,1,Indiv.
+PracticeMemory,Individual exercises focused on memorization and recall,(0.2;0.2),(0.2;0.0),10,(0.5;0.0),30,15,2,Indiv.
+PracticeApplication,Students apply learned concepts to solve practical problems,(0.2;0.4),(0.3;0.1),10,(0.5;0.12),20,15,2,Indiv.
+PracticeAnalyse,Team-based analysis activities to break down and understand concepts,(0.2;0.5),(0.3;0.2),10,(0.5;0.35),20,15,2,Team
+PracticeEvaluate,Collaborative evaluation of ideas solutions or arguments,(0.2;0.5),(0.25;0.15),10,(0.4;0.2),20,15,2,Team
+PracticeCreate,Students create original work demonstrating mastery,(0.2;0.6),(0.2;0.1),15,(0.5;0.2),45,30,2,Indiv.
+AdvancedOrganiser,Brief overview to help students organize new information,(0.0;0.0),(0.05;0.05),5,(0.07;0.05),10,5,1,Team
+Introduction,Initial presentation introducing the lesson topic,(0.0;0.0),(0.05;0.05),5,(0.1;0.1),10,5,1,Class
+ExplainClass,Teacher explains concepts with class-wide discussion,(0.05;0.2),,,(0.05;0.1),10,,1,Class

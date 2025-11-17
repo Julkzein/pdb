@@ -7,9 +7,11 @@ import React, { useEffect, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useOrchestrationStore, useIsConnected, useIsLoading, useError } from './store/orchestrationStore';
+import { useTeacherContextStore } from './store/teacherContextStore';
 import OrchestrationTimeline from './components/Timeline/OrchestrationTimeline';
 import ActivityLibraryPanel from './components/Library/ActivityLibraryPanel';
 import ToolbarPanel from './components/Toolbar/ToolbarPanel';
+import EnhancedTimelineView from './components/TeacherView/EnhancedTimelineView';
 import { ActivityData, InstantiatedActivity } from './types/domain';
 import './App.css';
 
@@ -18,6 +20,7 @@ const App: React.FC = () => {
   const isConnected = useIsConnected();
   const isLoading = useIsLoading();
   const error = useError();
+  const { enhancementData } = useTeacherContextStore();
   const [hoveredActivity, setHoveredActivity] = useState<{
     name: string;
     description?: string;
@@ -29,6 +32,9 @@ const App: React.FC = () => {
     startsAfter?: number;
     endsAfter?: number;
   } | null>(null);
+
+  // Check if we should show the enhanced view
+  const showEnhancedView = enhancementData !== null;
 
   const handleLibraryHover = (activity: ActivityData | null) => {
     if (activity) {
@@ -132,15 +138,24 @@ const App: React.FC = () => {
 
         {/* Main Content */}
         <div className="app-body">
-          {/* Timeline (Main Area) */}
-          <div className="timeline-area">
-            <OrchestrationTimeline onActivityHover={handleTimelineHover} />
-          </div>
+          {showEnhancedView ? (
+            /* Enhanced Timeline View with LLM Suggestions */
+            <div style={{ width: '100%', height: '100%', overflow: 'auto' }}>
+              <EnhancedTimelineView />
+            </div>
+          ) : (
+            <>
+              {/* Timeline (Main Area) */}
+              <div className="timeline-area">
+                <OrchestrationTimeline onActivityHover={handleTimelineHover} />
+              </div>
 
-          {/* Library (Right Panel) */}
-          <div className="library-area">
-            <ActivityLibraryPanel onActivityHover={handleLibraryHover} />
-          </div>
+              {/* Library (Right Panel) */}
+              <div className="library-area">
+                <ActivityLibraryPanel onActivityHover={handleLibraryHover} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* Activity Hover Tooltip */}

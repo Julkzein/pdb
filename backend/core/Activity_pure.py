@@ -31,42 +31,47 @@ class ActivityData:
     def __init__(self, line, idx):
         """
         Parse activity from CSV line
-        Format: Name,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane
+        Format: Name,Description,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane,explanation,sources
         """
         data = [field.strip() for field in line.split(',')]
 
         self.idx = idx
         self.name = data[0]
+        self.description = data[1] if len(data) > 1 and data[1] else None
 
         # Parse p-condition (prerequisite)
-        self.pcond = pVal.fromString(data[1])
+        self.pcond = pVal.fromString(data[2])
 
         # Determine if activity has flexible time
-        if data[6] != '':
+        if data[7] != '':
             # Has min/max/default time
             self.canChangeTime = True
-            minEffect = data[2]
-            maxEffect = data[4]
-            self.minT = int(data[3])
-            self.maxT = int(data[5])
-            self.defT = int(data[6])
+            minEffect = data[3]
+            maxEffect = data[5]
+            self.minT = int(data[4])
+            self.maxT = int(data[6])
+            self.defT = int(data[7])
         else:
             # Fixed time (only max time given)
             self.canChangeTime = False
-            minEffect = data[4]
-            maxEffect = data[4]
-            self.minT = int(data[5])
-            self.maxT = int(data[5])
-            self.defT = int(data[5])
+            minEffect = data[5]
+            maxEffect = data[5]
+            self.minT = int(data[6])
+            self.maxT = int(data[6])
+            self.defT = int(data[6])
 
         # Parse p-effect (interpolated over time)
         self.peffect = InterPVal.fromStrings(minEffect, maxEffect, self.minT, self.maxT, self.defT)
 
         # Max repetitions allowed
-        self.maxRepetition = int(data[7])
+        self.maxRepetition = int(data[8])
 
         # Default plane: "Indiv." -> 0, "Team" -> 1, "Class" -> 2
-        self.defPlane = self._parsePlane(data[8])
+        self.defPlane = self._parsePlane(data[9])
+
+        # Optional fields: explanation and sources
+        self.explanation = data[10] if len(data) > 10 and data[10] else None
+        self.sources = data[11] if len(data) > 11 and data[11] else None
 
     def _parsePlane(self, planeStr):
         """Convert plane string to index"""
@@ -93,6 +98,8 @@ class ActivityData:
 
     def getDescription(self):
         """Get brief description of what this activity is about"""
+        if self.description:
+            return self.description
         return ACTIVITY_DESCRIPTIONS.get(self.name, 'No description available')
 
     def what_from(self, start, customTime=None):
@@ -149,7 +156,9 @@ class ActivityData:
             'defT': self.defT,
             'canChangeTime': self.canChangeTime,
             'maxRepetition': self.maxRepetition,
-            'defPlane': self.defPlane
+            'defPlane': self.defPlane,
+            'explanation': self.explanation,
+            'sources': self.sources
         }
 
     @classmethod
@@ -159,6 +168,7 @@ class ActivityData:
         obj = cls.__new__(cls)
         obj.idx = data['idx']
         obj.name = data['name']
+        obj.description = data.get('description')
         obj.pcond = pVal.from_dict(data['pcond'])
         obj.peffect = InterPVal.from_dict(data['peffect'])
         obj.minT = data['minT']
@@ -167,6 +177,8 @@ class ActivityData:
         obj.canChangeTime = data['canChangeTime']
         obj.maxRepetition = data['maxRepetition']
         obj.defPlane = data['defPlane']
+        obj.explanation = data.get('explanation')
+        obj.sources = data.get('sources')
         return obj
 
 
@@ -177,21 +189,25 @@ class Library:
 
     def __init__(self, filename):
         """Load activities from CSV file"""
+        import csv
+
         self.activities = []
+        self.filename = filename
 
         with open(filename, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
+            reader = csv.reader(f)
+            header = next(reader)  # Skip header
 
-        # Skip header
-        for idx, line in enumerate(lines[1:]):
-            line = line.strip()
-            if line:  # Skip empty lines
-                try:
-                    activity = ActivityData(line, idx)
-                    self.activities.append(activity)
-                except Exception as e:
-                    print(f"Error parsing line {idx + 1}: {e}")
-                    print(f"Line content: {line}")
+            for idx, row in enumerate(reader):
+                if row and any(cell.strip() for cell in row):  # Skip empty rows
+                    try:
+                        # Convert row back to comma-separated string for ActivityData constructor
+                        line = ','.join(row)
+                        activity = ActivityData(line, idx)
+                        self.activities.append(activity)
+                    except Exception as e:
+                        print(f"Error parsing line {idx + 2}: {e}")
+                        print(f"Row content: {row}")
 
         print(f"Loaded {len(self.activities)} activities from {filename}")
 
@@ -210,6 +226,89 @@ class Library:
     def listeActData(self):
         """Get all activities"""
         return self.activities
+
+    def addActivity(self, activityData):
+        """
+        Add a new activity to the library (append-only)
+
+        Args:
+            activityData: ActivityData instance
+
+        Returns:
+            int: index of the newly added activity
+        """
+        newIdx = len(self.activities)
+        activityData.idx = newIdx
+        self.activities.append(activityData)
+        return newIdx
+
+    def saveToCSV(self, backup=True):
+        """
+        Save library to CSV file with optional backup
+
+        Args:
+            backup: If True, create backup before saving
+        """
+        import shutil
+        from datetime import datetime
+
+        if backup:
+            backup_path = f"{self.filename}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            shutil.copy2(self.filename, backup_path)
+            print(f"Created backup: {backup_path}")
+
+        # Write to temp file first (atomic operation)
+        temp_file = f"{self.filename}.tmp"
+        with open(temp_file, 'w', encoding='utf-8') as f:
+            # Write header
+            f.write("Name,Description,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane\n")
+
+            # Write each activity
+            for act in self.activities:
+                line = self._activityToCSVLine(act)
+                f.write(line + '\n')
+
+        # Replace original file
+        import os
+        os.replace(temp_file, self.filename)
+        print(f"Saved {len(self.activities)} activities to {self.filename}")
+
+    def _activityToCSVLine(self, act):
+        """Convert ActivityData to CSV line"""
+        description = act.description if act.description else ""
+
+        pcond_str = f"({act.pcond.v[0]};{act.pcond.v[1]})"
+
+        # Handle flexible vs fixed time
+        if act.canChangeTime:
+            min_effect = f"({act.peffect.minEffect.v[0]};{act.peffect.minEffect.v[1]})"
+            max_effect = f"({act.peffect.maxEffect.v[0]};{act.peffect.maxEffect.v[1]})"
+            line = f"{act.name},{description},{pcond_str},{min_effect},{act.minT},{max_effect},{act.maxT},{act.defT},{act.maxRepetition},{act.planeToString(act.defPlane)}"
+        else:
+            max_effect = f"({act.peffect.maxEffect.v[0]};{act.peffect.maxEffect.v[1]})"
+            line = f"{act.name},{description},{pcond_str},,,{max_effect},{act.defT},,{act.maxRepetition},{act.planeToString(act.defPlane)}"
+
+        return line
+
+    def reload(self):
+        """Reload library from CSV file"""
+        self.activities = []
+
+        with open(self.filename, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        # Skip header
+        for idx, line in enumerate(lines[1:]):
+            line = line.strip()
+            if line:
+                try:
+                    activity = ActivityData(line, idx)
+                    self.activities.append(activity)
+                except Exception as e:
+                    print(f"Error parsing line {idx + 1}: {e}")
+                    print(f"Line content: {line}")
+
+        print(f"Reloaded {len(self.activities)} activities from {self.filename}")
 
     def __str__(self):
         result = f"Library with {len(self.activities)} activities:\n"

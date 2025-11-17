@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { useOrchestrationStore } from '../../store/orchestrationStore';
-import { InstantiatedActivity, getPlaneColor, formatTime } from '../../types/domain';
+import { InstantiatedActivity, GapPValueInfo, getPlaneColor, formatTime, formatPValue } from '../../types/domain';
 import { useDrop, useDrag } from 'react-dnd';
 import './OrchestrationTimeline.css';
 
@@ -30,12 +30,14 @@ interface DropZoneProps {
   position: number;
   isHard: boolean;
   plane: number;
+  gapInfo?: GapPValueInfo;
   onDrop: (actIdx: number, position: number, plane: number) => void;
 }
 
-const DropZone: React.FC<DropZoneProps> = ({ position, isHard, plane, onDrop }) => {
+const DropZone: React.FC<DropZoneProps> = ({ position, isHard, plane, gapInfo, onDrop }) => {
   const { selectedGap, selectGap } = useOrchestrationStore();
   const isSelected = selectedGap === position;
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'LIBRARY_ACTIVITY',
@@ -59,6 +61,8 @@ const DropZone: React.FC<DropZoneProps> = ({ position, isHard, plane, onDrop }) 
       ref={drop as any}
       className={`drop-zone ${isSelected ? 'selected' : ''} ${isActive ? 'active' : ''}`}
       onClick={handleClick}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
       style={{
         width: isActive ? '80px' : isSelected ? '60px' : '30px',
         minWidth: isActive ? '80px' : isSelected ? '60px' : '30px',
@@ -101,6 +105,42 @@ const DropZone: React.FC<DropZoneProps> = ({ position, isHard, plane, onDrop }) 
           }}
         >
           +
+        </div>
+      )}
+      {showTooltip && gapInfo && plane === 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(17, 24, 39, 0.95)',
+            color: 'white',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            whiteSpace: 'nowrap',
+            zIndex: 1000,
+            marginBottom: '4px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontWeight: 'bold', marginBottom: '4px', color: '#60a5fa' }}>
+            Gap {position}
+          </div>
+          <div style={{ marginBottom: '2px' }}>
+            <span style={{ color: '#9ca3af' }}>From:</span> {formatPValue(gapInfo.fromPValue)}
+          </div>
+          <div style={{ marginBottom: '2px' }}>
+            <span style={{ color: '#9ca3af' }}>To:</span> {formatPValue(gapInfo.toPValue)}
+          </div>
+          <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(156, 163, 175, 0.3)' }}>
+            <span style={{ color: '#9ca3af' }}>Distance:</span>{' '}
+            <span style={{ color: gapInfo.isHard ? '#ef4444' : '#10b981', fontWeight: 'bold' }}>
+              {gapInfo.distance.toFixed(3)}
+            </span>
+          </div>
         </div>
       )}
     </div>
@@ -233,6 +273,7 @@ interface TimelineLaneProps {
   planeActivities: { act: InstantiatedActivity; idx: number }[];
   allActivities: InstantiatedActivity[];
   hardGapsList: number[];
+  gapPValueInfo: GapPValueInfo[];
   pixelsPerMinute: number;
   tBudget: number;
   minTimelineWidth: number;
@@ -248,6 +289,7 @@ const TimelineLane: React.FC<TimelineLaneProps> = ({
   planeActivities,
   allActivities,
   hardGapsList,
+  gapPValueInfo,
   pixelsPerMinute,
   tBudget,
   minTimelineWidth,
@@ -343,6 +385,7 @@ const TimelineLane: React.FC<TimelineLaneProps> = ({
           position={0}
           isHard={hardGapsList.includes(0)}
           plane={planeIdx}
+          gapInfo={gapPValueInfo.find(g => g.position === 0)}
           onDrop={onDrop}
         />
       </div>
@@ -365,6 +408,7 @@ const TimelineLane: React.FC<TimelineLaneProps> = ({
               position={idx + 1}
               isHard={hardGapsList.includes(idx + 1)}
               plane={planeIdx}
+              gapInfo={gapPValueInfo.find(g => g.position === idx + 1)}
               onDrop={onDrop}
             />
           </div>
@@ -393,11 +437,9 @@ interface OrchestrationTimelineProps {
 }
 
 const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivityHover }) => {
-  const { graphState, insertActivity, removeActivity, changePlane } = useOrchestrationStore();
-  const [hoveredActivity, setHoveredActivity] = useState<InstantiatedActivity | null>(null);
+  const { graphState, insertActivity, removeActivity, changePlane, selectedGap } = useOrchestrationStore();
 
   const handleActivityHover = (activity: InstantiatedActivity | null) => {
-    setHoveredActivity(activity);
     if (onActivityHover) onActivityHover(activity);
   };
 
@@ -449,6 +491,8 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
   const planeNames = ['Indiv.', 'Team', 'Class'];
   const isEmpty = graphState.activities.length === 0;
 
+  const selectedGapInfo = selectedGap !== null ? graphState.gapPValueInfo.find(g => g.position === selectedGap) : null;
+
   return (
     <div className="timeline-container">
       {/* Header with stats */}
@@ -460,7 +504,7 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
         <h2 style={{ margin: '0 0 12px 0', fontSize: '20px', color: '#111827' }}>
           Orchestration Timeline
         </h2>
-        <div style={{ display: 'flex', gap: '24px', fontSize: '14px' }}>
+        <div style={{ display: 'flex', gap: '24px', fontSize: '14px', marginBottom: selectedGapInfo ? '16px' : '0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: '#6b7280' }}>Time:</span>
             <span style={{
@@ -484,6 +528,17 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#6b7280' }}>Current:</span>
+            <span style={{
+              fontWeight: 'bold',
+              color: '#3b82f6',
+              fontSize: '14px',
+              fontFamily: 'monospace',
+            }}>
+              {formatPValue(graphState.reached)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ color: '#6b7280' }}>Goal:</span>
             <span style={{
               fontWeight: 'bold',
@@ -492,8 +547,113 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
             }}>
               {graphState.goalReached ? ' Reached' : ' Not Yet'}
             </span>
+            <span style={{
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              color: '#6b7280',
+              marginLeft: '4px'
+            }}>
+              {formatPValue(graphState.goal)}
+            </span>
           </div>
         </div>
+
+        {/* Selected Gap P-Value Information Panel */}
+        {selectedGapInfo && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px 16px',
+            background: selectedGapInfo.isHard ? '#fef2f2' : '#f0f9ff',
+            border: selectedGapInfo.isHard ? '2px solid #fca5a5' : '2px solid #93c5fd',
+            borderRadius: '8px',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '8px'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: 'bold',
+                color: selectedGapInfo.isHard ? '#dc2626' : '#0ea5e9'
+              }}>
+                Selected Gap {selectedGap} {selectedGapInfo.isHard ? '(Hard Gap)' : ''}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                Distance: <span style={{
+                  fontWeight: 'bold',
+                  color: selectedGapInfo.isHard ? '#dc2626' : '#059669'
+                }}>
+                  {selectedGapInfo.distance.toFixed(3)}
+                </span>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+              fontSize: '12px'
+            }}>
+              <div style={{
+                padding: '8px',
+                background: 'white',
+                borderRadius: '4px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{ color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>
+                  Current State (From)
+                </div>
+                <div style={{
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  color: '#111827',
+                  fontWeight: 'bold'
+                }}>
+                  {formatPValue(selectedGapInfo.fromPValue)}
+                </div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                  Fluency: {selectedGapInfo.fromPValue.v[0].toFixed(2)} |
+                  Depth: {selectedGapInfo.fromPValue.v[1].toFixed(2)}
+                </div>
+              </div>
+
+              <div style={{
+                padding: '8px',
+                background: 'white',
+                borderRadius: '4px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{ color: '#6b7280', marginBottom: '4px', fontWeight: '500' }}>
+                  Target State (To)
+                </div>
+                <div style={{
+                  fontFamily: 'monospace',
+                  fontSize: '13px',
+                  color: '#111827',
+                  fontWeight: 'bold'
+                }}>
+                  {formatPValue(selectedGapInfo.toPValue)}
+                </div>
+                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                  Fluency: {selectedGapInfo.toPValue.v[0].toFixed(2)} |
+                  Depth: {selectedGapInfo.toPValue.v[1].toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: '8px',
+              fontSize: '11px',
+              color: '#6b7280',
+              fontStyle: 'italic',
+              textAlign: 'center'
+            }}>
+              Hover over gap zones in the timeline to see all gap information
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Timeline area */}
@@ -574,6 +734,7 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
                       position={0}
                       isHard={graphState.hardGapsList.includes(0)}
                       plane={planeIdx}
+                      gapInfo={graphState.gapPValueInfo.find(g => g.position === 0)}
                       onDrop={handleDrop}
                     />
                   </div>
@@ -629,6 +790,7 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
                       planeActivities={planeActivities}
                       allActivities={graphState.activities}
                       hardGapsList={graphState.hardGapsList}
+                      gapPValueInfo={graphState.gapPValueInfo}
                       pixelsPerMinute={pixelsPerMinute}
                       tBudget={graphState.tBudget}
                       minTimelineWidth={minTimelineWidth}

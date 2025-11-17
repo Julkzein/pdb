@@ -45,6 +45,7 @@ interface OrchestrationStore {
   loadActivities: () => Promise<void>;
   loadPlanes: () => Promise<void>;
   loadConfig: () => Promise<void>;
+  createActivity: (activityData: any) => Promise<void>;
 
   // Graph State
   refreshGraphState: () => Promise<void>;
@@ -161,6 +162,18 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
           set({ config });
         } catch (error: any) {
           set({ error: error.message });
+          throw error;
+        }
+      },
+
+      createActivity: async (activityData: any) => {
+        set({ isLoading: true });
+        try {
+          await apiService.createActivity(activityData);
+          await get().loadActivities();
+          set({ isLoading: false });
+        } catch (error: any) {
+          set({ error: error.message, isLoading: false });
           throw error;
         }
       },

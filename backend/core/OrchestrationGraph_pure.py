@@ -503,6 +503,63 @@ class OrchestrationGraphData:
 
     # ==================== SERIALIZATION FOR JSON API ==================== #
 
+    def get_gap_pvalue_info(self):
+        """
+        Get p-value information for each gap position.
+        Returns a list of gap info dictionaries.
+        """
+        gap_info = []
+
+        # Gap before first activity (position 0)
+        if len(self.listOfFixedInstancedAct) == 0:
+            # Only gap: from start to goal
+            distance = self.start.distance_onlyForward(self.goal)
+            gap_info.append({
+                'position': 0,
+                'fromPValue': self.start.to_dict(),
+                'toPValue': self.goal.to_dict(),
+                'distance': distance,
+                'isHard': distance > THRESHOLD
+            })
+        else:
+            # Gap before first activity
+            firstPrecond = self.listOfFixedInstancedAct[0].actData.pcond
+            distance = self.start.distance_onlyForward(firstPrecond)
+            gap_info.append({
+                'position': 0,
+                'fromPValue': self.start.to_dict(),
+                'toPValue': firstPrecond.to_dict(),
+                'distance': distance,
+                'isHard': distance > THRESHOLD
+            })
+
+            # Gaps between activities
+            for i in range(len(self.listOfFixedInstancedAct) - 1):
+                currentEnd = self.listOfFixedInstancedAct[i].pValEnd
+                nextPrecond = self.listOfFixedInstancedAct[i + 1].actData.pcond
+                distance = currentEnd.distance_onlyForward(nextPrecond)
+
+                gap_info.append({
+                    'position': i + 1,
+                    'fromPValue': currentEnd.to_dict(),
+                    'toPValue': nextPrecond.to_dict(),
+                    'distance': distance,
+                    'isHard': distance > THRESHOLD
+                })
+
+            # Gap to goal (after last activity)
+            lastEnd = self.listOfFixedInstancedAct[-1].pValEnd
+            distance = lastEnd.distance_onlyForward(self.goal)
+            gap_info.append({
+                'position': len(self.listOfFixedInstancedAct),
+                'fromPValue': lastEnd.to_dict(),
+                'toPValue': self.goal.to_dict(),
+                'distance': distance,
+                'isHard': distance > THRESHOLD
+            })
+
+        return gap_info
+
     def to_dict(self):
         """Serialize to dictionary for JSON API"""
         return {
@@ -515,7 +572,8 @@ class OrchestrationGraphData:
             'hardGapsCount': self.hardGapsCount,
             'hardGapsList': self.hardGapsList,
             'remainingGapsDistance': self.remainingGapsDistance,
-            'goalReached': self.reached.isPast(self.goal)
+            'goalReached': self.reached.isPast(self.goal),
+            'gapPValueInfo': self.get_gap_pvalue_info()
         }
 
 

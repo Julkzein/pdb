@@ -5,13 +5,16 @@
 
 import React, { useState } from 'react';
 import { useOrchestrationStore, useGraphState, useIsLoading } from '../../store/orchestrationStore';
+import { useTeacherContextStore } from '../../store/teacherContextStore';
 import { apiService } from '../../services/apiService';
+import TeacherContextModal from '../TeacherView/TeacherContextModal';
 import './ToolbarPanel.css';
 
 const ToolbarPanel: React.FC = () => {
   const graphState = useGraphState();
   const isLoading = useIsLoading();
   const { resetGraph, autoAdd, saveGraph, loadGraph } = useOrchestrationStore();
+  const { openModal, isModalOpen, closeModal } = useTeacherContextStore();
 
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
@@ -112,6 +115,21 @@ const ToolbarPanel: React.FC = () => {
           className="toolbar-btn primary"
         >
           Add Recommended
+        </button>
+      </div>
+
+      <div className="toolbar-section">
+        <button
+          onClick={openModal}
+          disabled={isLoading || !hasActivities}
+          className="toolbar-btn success"
+          style={{
+            background: '#10b981',
+            color: 'white',
+            fontWeight: '600',
+          }}
+        >
+          Go Teach
         </button>
       </div>
 
@@ -243,6 +261,12 @@ const ToolbarPanel: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Teacher Context Modal */}
+      <TeacherContextModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 };

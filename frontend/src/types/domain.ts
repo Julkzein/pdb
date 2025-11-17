@@ -43,6 +43,8 @@ export interface ActivityData {
   defPlane: number;  // 0=Indiv, 1=Team, 2=Class
   planeName?: string;
   planeDescription?: string;
+  explanation?: string;  // Explanation of why to use this activity
+  sources?: string;  // Academic sources backing this activity
 }
 
 /**
@@ -85,6 +87,17 @@ export interface ContextActivity {
 // ==================== ORCHESTRATION GRAPH ==================== //
 
 /**
+ * Gap p-value information
+ */
+export interface GapPValueInfo {
+  position: number;
+  fromPValue: PValue;
+  toPValue: PValue;
+  distance: number;
+  isHard: boolean;
+}
+
+/**
  * Complete orchestration graph state
  */
 export interface OrchestrationGraphState {
@@ -98,6 +111,7 @@ export interface OrchestrationGraphState {
   hardGapsList: number[];
   remainingGapsDistance: number;
   goalReached: boolean;
+  gapPValueInfo: GapPValueInfo[];
 }
 
 /**
