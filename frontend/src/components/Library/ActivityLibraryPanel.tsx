@@ -4,10 +4,11 @@
  * Shows recommendations when a gap is selected
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useDrag } from 'react-dnd';
 import { useOrchestrationStore, useActivities, useRecommendations } from '../../store/orchestrationStore';
 import { ActivityData, ContextActivity, formatTime } from '../../types/domain';
+import ActivityEditor, { NewActivityData } from './ActivityEditor';
 import './ActivityLibraryPanel.css';
 
 interface DraggableActivityProps {
@@ -17,6 +18,7 @@ interface DraggableActivityProps {
 }
 
 const DraggableActivity: React.FC<DraggableActivityProps> = ({ activity, contextInfo, onHover }) => {
+  const [showDetails, setShowDetails] = useState(false);
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'LIBRARY_ACTIVITY',
     item: { actIdx: activity.idx },
@@ -28,6 +30,7 @@ const DraggableActivity: React.FC<DraggableActivityProps> = ({ activity, context
   const isBest = contextInfo?.isBest || false;
   const isInvalid = contextInfo && !contextInfo.okeyToTake;
   const flags = contextInfo?.flags;
+  const hasExtraInfo = activity.explanation || activity.sources;
 
   const handleMouseEnter = () => {
     if (onHover) onHover(activity);
@@ -57,7 +60,7 @@ const DraggableActivity: React.FC<DraggableActivityProps> = ({ activity, context
     >
       {isBest && (
         <div style={{ position: 'absolute', top: '4px', right: '4px', fontSize: '16px' }}>
-          
+
         </div>
       )}
       <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '14px' }}>
@@ -80,6 +83,62 @@ const DraggableActivity: React.FC<DraggableActivityProps> = ({ activity, context
           )}
         </div>
       )}
+
+      {hasExtraInfo && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(!showDetails);
+            }}
+            style={{
+              marginTop: '8px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '4px',
+              color: 'white',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            {showDetails ? '▲ Hide Details' : '▼ Show Why & Sources'}
+          </button>
+
+          {showDetails && (
+            <div style={{
+              marginTop: '8px',
+              padding: '8px',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              lineHeight: '1.4',
+            }}>
+              {activity.explanation && (
+                <div style={{ marginBottom: activity.sources ? '8px' : '0' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px', opacity: 0.9 }}>
+                    Why use this:
+                  </div>
+                  <div style={{ opacity: 0.95 }}>
+                    {activity.explanation}
+                  </div>
+                </div>
+              )}
+              {activity.sources && (
+                <div>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px', opacity: 0.9 }}>
+                    Sources:
+                  </div>
+                  <div style={{ opacity: 0.9, fontStyle: 'italic' }}>
+                    {activity.sources}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -91,19 +150,50 @@ interface ActivityLibraryPanelProps {
 const ActivityLibraryPanel: React.FC<ActivityLibraryPanelProps> = ({ onActivityHover }) => {
   const activities = useActivities();
   const recommendations = useRecommendations();
-  const { showRecommendations, selectedGap, clearGapSelection } = useOrchestrationStore();
+  const { showRecommendations, selectedGap, clearGapSelection, createActivity } = useOrchestrationStore();
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const displayActivities = showRecommendations
     ? recommendations.map(rec => rec.activity)
     : activities;
 
+  const handleCreateActivity = async (activityData: NewActivityData) => {
+    try {
+      await createActivity(activityData);
+      setIsEditorOpen(false);
+    } catch (error) {
+      console.error('Failed to create activity:', error);
+      throw error;
+    }
+  };
+
   return (
     <div className="library-panel">
       <div className="library-header">
-        <h3>Activity Library</h3>
-        <div style={{ fontSize: '12px', color: '#6b7280' }}>
-          {activities.length} activities
+        <div>
+          <h3>Activity Library</h3>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+            {activities.length} activities
+          </div>
         </div>
+        <button
+          onClick={() => setIsEditorOpen(true)}
+          style={{
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <span style={{ fontSize: '18px' }}>+</span> New Activity
+        </button>
       </div>
 
       {showRecommendations && selectedGap !== null && (
@@ -153,6 +243,12 @@ const ActivityLibraryPanel: React.FC<ActivityLibraryPanelProps> = ({ onActivityH
           ))
         )}
       </div>
+
+      <ActivityEditor
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        onSave={handleCreateActivity}
+      />
     </div>
   );
 };

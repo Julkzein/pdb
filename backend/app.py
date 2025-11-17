@@ -9,6 +9,10 @@ import sys
 from datetime import datetime
 from flask import Flask, jsonify, request  # type: ignore
 from flask_cors import CORS  # type: ignore
+from dotenv import load_dotenv  # type: ignore
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add core directory to path
 core_dir = os.path.join(os.path.dirname(__file__), 'core')
@@ -20,6 +24,7 @@ from pValues_pure import pVal  # type: ignore
 from Activity_pure import Library  # type: ignore
 from OrchestrationGraph_pure import OrchestrationGraphData  # type: ignore
 from visualizer import generate_state_space_graph  # type: ignore
+from llm_service import create_llm_service  # type: ignore
 
 # Create Flask app
 app = Flask(__name__)
@@ -28,6 +33,7 @@ CORS(app, origins="*")  # Allow all origins for development
 # Global state
 library = None
 current_graph = None
+llm_service = None
 
 # Configuration
 DEFAULT_TIME_BUDGET = 120
@@ -79,6 +85,17 @@ def initialize_graph():
 initialize_library()
 initialize_graph()
 
+# Initialize LLM service (will be None if no API key)
+try:
+    llm_service = create_llm_service()
+    if llm_service:
+        print("✓ LLM service initialized with DeepSeek API (super cheap!)")
+    else:
+        print("⚠ LLM service not available (no DEEPSEEK_API_KEY configured)")
+except Exception as e:
+    print(f"⚠ LLM service initialization failed: {e}")
+    llm_service = None
+
 
 # ==================== BASIC ENDPOINTS ==================== #
 
@@ -102,21 +119,14 @@ def get_activities():
 
     activities = []
     for act in library.listeActData():
-        activities.append({
-            'idx': act.idx,
-            'name': act.name,
-            'description': act.getDescription(),
-            'duration': act.defT,
-            'minTime': act.minT,
-            'maxTime': act.maxT,
-            'canChangeTime': act.canChangeTime,
-            'maxRepetition': act.maxRepetition,
-            'defPlane': act.defPlane,
-            'planeName': act.planeToString(act.defPlane),
-            'planeDescription': act.planeDescription(act.defPlane),
-            'pcond': act.pcond.to_dict(),
-            'peffect': act.peffect.to_dict()
-        })
+        act_dict = act.to_dict()
+        # Add extra fields not in to_dict()
+        act_dict['duration'] = act.defT
+        act_dict['minTime'] = act.minT
+        act_dict['maxTime'] = act.maxT
+        act_dict['planeName'] = act.planeToString(act.defPlane)
+        act_dict['planeDescription'] = act.planeDescription(act.defPlane)
+        activities.append(act_dict)
 
     return jsonify(activities)
 
@@ -548,6 +558,159 @@ def get_params():
         "threshold": 0.05,
         "precision": 0.01
     })
+
+
+# ==================== ACTIVITY MANAGEMENT ENDPOINTS ==================== #
+
+@app.route('/api/activities/create', methods=['POST'])
+def create_activity():
+    """
+    Create a new activity (append to library)
+
+    Body:
+        name: str
+        description: str
+        pcond: [float, float]
+        canChangeTime: bool
+        minT: int (if canChangeTime)
+        maxT: int (if canChangeTime)
+        defT: int
+        minEffect: [float, float] (if canChangeTime)
+        maxEffect: [float, float]
+        maxRepetition: int
+        defPlane: int (0=Indiv, 1=Team, 2=Class)
+    """
+    if library is None:
+        return jsonify({"error": "Library not loaded"}), 500
+
+    try:
+        data = request.get_json()
+
+        # Validate required fields
+        required = ['name', 'description', 'pcond', 'maxEffect', 'defT', 'maxRepetition', 'defPlane']
+        for field in required:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Validate name uniqueness
+        for act in library.listeActData():
+            if act.name == data['name']:
+                return jsonify({"error": f"Activity name '{data['name']}' already exists"}), 400
+
+        # Build CSV line for new activity
+        name = data['name']
+        description = data['description']
+        pcond = f"({data['pcond'][0]};{data['pcond'][1]})"
+
+        canChangeTime = data.get('canChangeTime', False)
+        defPlane = data['defPlane']
+        maxRepetition = data['maxRepetition']
+
+        if canChangeTime:
+            minEffect = f"({data['minEffect'][0]};{data['minEffect'][1]})"
+            maxEffect = f"({data['maxEffect'][0]};{data['maxEffect'][1]})"
+            minT = data['minT']
+            maxT = data['maxT']
+            defT = data['defT']
+            csv_line = f"{name},{description},{pcond},{minEffect},{minT},{maxEffect},{maxT},{defT},{maxRepetition},{['Indiv.', 'Team', 'Class'][defPlane]}"
+        else:
+            maxEffect = f"({data['maxEffect'][0]};{data['maxEffect'][1]})"
+            defT = data['defT']
+            csv_line = f"{name},{description},{pcond},,,{maxEffect},{defT},,{maxRepetition},{['Indiv.', 'Team', 'Class'][defPlane]}"
+
+        # Create ActivityData from CSV line
+        from Activity_pure import ActivityData
+        newIdx = library.getLength()
+        new_activity = ActivityData(csv_line, newIdx)
+
+        # Add to library
+        library.addActivity(new_activity)
+
+        # Save to CSV with backup
+        library.saveToCSV(backup=True)
+
+        # Reinitialize the graph with the updated library
+        global current_graph
+        start = pVal(DEFAULT_START)
+        goal = pVal(DEFAULT_GOAL)
+        current_graph = OrchestrationGraphData(library, DEFAULT_TIME_BUDGET, start, goal)
+        print(f"Reinitialized graph with {library.getLength()} activities")
+
+        return jsonify({
+            "success": True,
+            "message": f"Created activity '{name}'",
+            "activity": new_activity.to_dict()
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to create activity: {str(e)}"}), 500
+
+
+@app.route('/api/library/reload', methods=['POST'])
+def reload_library():
+    """Manually reload library from CSV"""
+    global library
+
+    if library is None:
+        return jsonify({"error": "Library not loaded"}), 500
+
+    try:
+        library.reload()
+
+        return jsonify({
+            "success": True,
+            "message": "Library reloaded",
+            "activity_count": library.getLength()
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to reload library: {str(e)}"}), 500
+
+
+# ==================== LLM ENHANCEMENT ENDPOINT ==================== #
+
+@app.route('/api/enhance-orchestration', methods=['POST'])
+def enhance_orchestration():
+    """
+    Enhance orchestration with LLM-generated teaching resources
+
+    Body:
+        orchestration: full graph state dict
+        ageGroup: string (e.g., "12-13 years old")
+        subject: string (e.g., "Photosynthesis")
+    """
+    if llm_service is None:
+        return jsonify({
+            "error": "LLM service not available",
+            "message": "DEEPSEEK_API_KEY not configured"
+        }), 503
+
+    try:
+        data = request.get_json()
+
+        orchestration = data.get('orchestration')
+        age_group = data.get('ageGroup')
+        subject = data.get('subject')
+
+        if not orchestration or not age_group or not subject:
+            return jsonify({
+                "error": "Missing required fields",
+                "required": ["orchestration", "ageGroup", "subject"]
+            }), 400
+
+        # Call LLM service
+        result = llm_service.enhance_orchestration(orchestration, age_group, subject)
+
+        return jsonify({
+            "success": True,
+            "enhancements": result["enhancements"],
+            "metadata": result["metadata"]
+        })
+
+    except Exception as e:
+        return jsonify({
+            "error": "Enhancement failed",
+            "message": str(e)
+        }), 500
 
 
 # ==================== ERROR HANDLERS ==================== #
