@@ -43,6 +43,22 @@ const ToolbarPanel: React.FC = () => {
     }
   };
 
+  const handleComplete = async () => {
+    try {
+      const result = await apiService.autoComplete();
+      if (result.goalReached) {
+        alert(`Goal reached! Added ${result.activitiesAdded} activities to complete the orchestration.`);
+      } else {
+        alert(`Added ${result.activitiesAdded} activities, but goal not yet reached. You may need to adjust manually.`);
+      }
+      // Refresh the graph state
+      const state = await apiService.getGraphState();
+      useOrchestrationStore.setState({ graphState: state, isLoading: false });
+    } catch (error: any) {
+      alert(`Failed to complete: ${error.message}`);
+    }
+  };
+
   const handleSave = async () => {
     setShowSaveDialog(true);
   };
@@ -115,6 +131,16 @@ const ToolbarPanel: React.FC = () => {
           className="toolbar-btn primary"
         >
           Add Recommended
+        </button>
+        <button
+          onClick={handleComplete}
+          disabled={isLoading || !hasGaps}
+          className="toolbar-btn primary"
+          style={{
+            background: '#8b5cf6',
+          }}
+        >
+          Complete
         </button>
       </div>
 

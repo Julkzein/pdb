@@ -87,7 +87,7 @@ initialize_graph()
 
 # Initialize LLM service (will be None if no API key)
 try:
-    llm_service = create_llm_service()
+    llm_service = create_llm_service(library)
     if llm_service:
         print("✓ LLM service initialized with DeepSeek API (super cheap!)")
     else:
@@ -410,6 +410,44 @@ def auto_add_from_gap():
         }), 400
 
 
+@app.route('/api/graph/auto-complete', methods=['POST'])
+def auto_complete():
+    """Automatically add activities until goal is reached"""
+    if current_graph is None:
+        return jsonify({"error": "Graph not initialized"}), 400
+
+    activities_added = 0
+    max_iterations = 100  # Safety limit to prevent infinite loops
+
+    # Keep adding activities until goal is reached or we hit the limit
+    while activities_added < max_iterations:
+        # Check if goal is already reached
+        graph_dict = current_graph.to_dict()
+        if graph_dict.get('goalReached', False):
+            break
+
+        # Try to add an activity
+        success = current_graph.autoAdd()
+
+        if success:
+            activities_added += 1
+        else:
+            # Can't add more activities
+            break
+
+    # Get final state
+    final_state = current_graph.to_dict()
+    goal_reached = final_state.get('goalReached', False)
+
+    return jsonify({
+        "success": True,
+        "message": f"Added {activities_added} activities. Goal {'reached' if goal_reached else 'not yet reached'}.",
+        "activitiesAdded": activities_added,
+        "goalReached": goal_reached,
+        "state": final_state
+    })
+
+
 # ==================== SAVE/LOAD ENDPOINTS ==================== #
 
 @app.route('/api/graph/save', methods=['POST'])
@@ -697,8 +735,13 @@ def enhance_orchestration():
                 "required": ["orchestration", "ageGroup", "subject"]
             }), 400
 
+        print(f"\n[API] Enhancement request: {subject} for {age_group}")
+        print(f"[API] Activities in orchestration: {len(orchestration.get('activities', []))}")
+
         # Call LLM service
         result = llm_service.enhance_orchestration(orchestration, age_group, subject)
+
+        print(f"[API] ✓ Enhancement completed successfully")
 
         return jsonify({
             "success": True,
@@ -707,10 +750,21 @@ def enhance_orchestration():
         })
 
     except Exception as e:
+        error_message = str(e)
+        print(f"[API] ✗ Enhancement failed: {error_message}")
+
+        # Determine appropriate HTTP status code
+        if "timeout" in error_message.lower():
+            status_code = 504  # Gateway Timeout
+        elif "connection" in error_message.lower():
+            status_code = 503  # Service Unavailable
+        else:
+            status_code = 500  # Internal Server Error
+
         return jsonify({
             "error": "Enhancement failed",
-            "message": str(e)
-        }), 500
+            "message": error_message
+        }), status_code
 
 
 # ==================== ERROR HANDLERS ==================== #
@@ -763,4 +817,6 @@ if __name__ == '__main__':
     print("=" * 60)
     print()
 
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    # Use debug mode but disable auto-reloader to prevent crashes
+    # Set use_reloader=True only during active development
+    app.run(debug=True, port=5000, host='0.0.0.0', use_reloader=False)
