@@ -112,7 +112,6 @@ const TeacherContextModal: React.FC<TeacherContextModalProps> = ({ isOpen, onClo
           </div>
 
           <div className="info-box">
-            <div className="info-icon">ℹ️</div>
             <div className="info-content">
               <strong>What you'll get:</strong>
               <ul>

@@ -45,6 +45,7 @@ export interface ActivityData {
   planeDescription?: string;
   explanation?: string;  // Explanation of why to use this activity
   sources?: string;  // Academic sources backing this activity
+  llmPrompt?: string;  // Activity-specific LLM prompt template
 }
 
 /**

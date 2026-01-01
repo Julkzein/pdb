@@ -31,7 +31,7 @@ class ActivityData:
     def __init__(self, line, idx):
         """
         Parse activity from CSV line
-        Format: Name,Description,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane,explanation,sources
+        Format: Name,Description,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane,explanation,sources,llm_prompt
         """
         data = [field.strip() for field in line.split(',')]
 
@@ -69,9 +69,10 @@ class ActivityData:
         # Default plane: "Indiv." -> 0, "Team" -> 1, "Class" -> 2
         self.defPlane = self._parsePlane(data[9])
 
-        # Optional fields: explanation and sources
+        # Optional fields: explanation, sources, and llm_prompt
         self.explanation = data[10] if len(data) > 10 and data[10] else None
         self.sources = data[11] if len(data) > 11 and data[11] else None
+        self.llm_prompt = data[12] if len(data) > 12 and data[12] else None
 
     def _parsePlane(self, planeStr):
         """Convert plane string to index"""
@@ -158,7 +159,8 @@ class ActivityData:
             'maxRepetition': self.maxRepetition,
             'defPlane': self.defPlane,
             'explanation': self.explanation,
-            'sources': self.sources
+            'sources': self.sources,
+            'llmPrompt': self.llm_prompt
         }
 
     @classmethod
@@ -179,6 +181,7 @@ class ActivityData:
         obj.defPlane = data['defPlane']
         obj.explanation = data.get('explanation')
         obj.sources = data.get('sources')
+        obj.llm_prompt = data.get('llmPrompt')
         return obj
 
 

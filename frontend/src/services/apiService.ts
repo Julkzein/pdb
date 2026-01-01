@@ -25,7 +25,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 10000,
+      timeout: 30000, // Increased to 30 seconds to handle backend restarts
     });
 
     // Add response interceptor for error handling
@@ -35,10 +35,23 @@ class ApiService {
         console.error('API Error:', error);
         if (error.response) {
           // Server responded with error status
-          throw new Error(error.response.data.error || 'Server error');
+          const message = error.response.data.message || error.response.data.error || 'Server error';
+          const status = error.response.status;
+
+          // Provide more specific error messages based on status code
+          if (status === 504) {
+            throw new Error(`Timeout: ${message}`);
+          } else if (status === 503) {
+            throw new Error(`Service unavailable: ${message}`);
+          } else {
+            throw new Error(message);
+          }
         } else if (error.request) {
           // Request made but no response
-          throw new Error('Cannot connect to backend');
+          if (error.code === 'ECONNABORTED') {
+            throw new Error('Request timeout - the operation took too long. Try with fewer activities.');
+          }
+          throw new Error('Cannot connect to backend - please check if the server is running');
         } else {
           // Something else happened
           throw new Error(error.message);
@@ -161,6 +174,17 @@ class ApiService {
     return response.data;
   }
 
+  async autoComplete(): Promise<{
+    success: boolean;
+    message: string;
+    activitiesAdded: number;
+    goalReached: boolean;
+    state: OrchestrationGraphState
+  }> {
+    const response = await this.client.post('/graph/auto-complete', {}, { timeout: 60000 });
+    return response.data;
+  }
+
   // ==================== SAVE/LOAD ==================== //
 
   async saveGraph(filename?: string): Promise<{ success: boolean; filename: string; message: string }> {
@@ -205,6 +229,7 @@ class ApiService {
     subject: string
   ): Promise<any> {
     // Increase timeout for LLM requests (can be slow)
+    // Based on ~10s per activity, allow up to 120s for 5+ activities
     const response = await this.client.post(
       '/enhance-orchestration',
       {
@@ -212,7 +237,7 @@ class ApiService {
         ageGroup,
         subject,
       },
-      { timeout: 60000 } // 60 second timeout for LLM
+      { timeout: 120000 } // 120 second (2 minute) timeout for LLM
     );
     return response.data;
   }
