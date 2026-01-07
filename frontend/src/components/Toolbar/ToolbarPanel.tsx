@@ -10,7 +10,12 @@ import { apiService } from '../../services/apiService';
 import TeacherContextModal from '../TeacherView/TeacherContextModal';
 import './ToolbarPanel.css';
 
-const ToolbarPanel: React.FC = () => {
+interface ToolbarPanelProps {
+  entryMode?: 'auto' | 'custom';
+  onBackToLanding?: () => void;
+}
+
+const ToolbarPanel: React.FC<ToolbarPanelProps> = ({ entryMode = 'custom', onBackToLanding }) => {
   const graphState = useGraphState();
   const isLoading = useIsLoading();
   const { resetGraph, autoAdd, saveGraph, loadGraph } = useOrchestrationStore();
@@ -110,6 +115,11 @@ const ToolbarPanel: React.FC = () => {
   return (
     <div className="toolbar-panel">
       <div className="toolbar-section">
+        {onBackToLanding && (
+          <button onClick={onBackToLanding} disabled={isLoading} className="toolbar-btn" style={{ marginRight: '12px' }}>
+            ← Back to Start
+          </button>
+        )}
         <button onClick={handleReset} disabled={isLoading || !hasActivities} className="toolbar-btn">
           Reset
         </button>
@@ -144,20 +154,23 @@ const ToolbarPanel: React.FC = () => {
         </button>
       </div>
 
-      <div className="toolbar-section">
-        <button
-          onClick={openModal}
-          disabled={isLoading || !hasActivities}
-          className="toolbar-btn success"
-          style={{
-            background: '#10b981',
-            color: 'white',
-            fontWeight: '600',
-          }}
-        >
-          Go Teach
-        </button>
-      </div>
+      {/* Only show "Go Teach" button if in custom mode */}
+      {entryMode === 'custom' && (
+        <div className="toolbar-section">
+          <button
+            onClick={openModal}
+            disabled={isLoading || !hasActivities}
+            className="toolbar-btn success"
+            style={{
+              background: '#10b981',
+              color: 'white',
+              fontWeight: '600',
+            }}
+          >
+            Go Teach
+          </button>
+        </div>
+      )}
 
       {/* Save Dialog */}
       {showSaveDialog && (

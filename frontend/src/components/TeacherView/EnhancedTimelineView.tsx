@@ -5,11 +5,15 @@
 
 import React, { useState } from 'react';
 import { useOrchestrationStore } from '../../store/orchestrationStore';
-import { useTeacherContextStore, ActivityEnhancement, ResourceItem } from '../../store/teacherContextStore';
+import { useTeacherContextStore } from '../../store/teacherContextStore';
 import { formatTime, formatPValue, getPlaneName } from '../../types/domain';
 import './EnhancedTimelineView.css';
 
-const EnhancedTimelineView: React.FC = () => {
+interface EnhancedTimelineViewProps {
+  onBackToLanding?: () => void;
+}
+
+const EnhancedTimelineView: React.FC<EnhancedTimelineViewProps> = ({ onBackToLanding }) => {
   const graphState = useOrchestrationStore(state => state.graphState);
   const {
     teacherContext,
@@ -93,6 +97,11 @@ const EnhancedTimelineView: React.FC = () => {
           <button onClick={handleRegenerate} disabled={isLoading} className="regenerate-button">
             {isLoading ? 'Regenerating...' : 'Regenerate'}
           </button>
+          {onBackToLanding && (
+            <button onClick={onBackToLanding} className="back-button">
+              ← Start Over
+            </button>
+          )}
           <button onClick={clearEnhancement} className="back-button">
             ← Back to Timeline
           </button>

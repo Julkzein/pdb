@@ -12,15 +12,25 @@ import OrchestrationTimeline from './components/Timeline/OrchestrationTimeline';
 import ActivityLibraryPanel from './components/Library/ActivityLibraryPanel';
 import ToolbarPanel from './components/Toolbar/ToolbarPanel';
 import EnhancedTimelineView from './components/TeacherView/EnhancedTimelineView';
+import LandingPage from './components/Landing/LandingPage';
 import { ActivityData, InstantiatedActivity } from './types/domain';
+import { apiService } from './services/apiService';
 import './App.css';
 
+type ViewType = 'landing' | 'orchestration' | 'teaching';
+
 const App: React.FC = () => {
-  const { initialize, clearError } = useOrchestrationStore();
+  const { initialize, clearError, refreshGraphState } = useOrchestrationStore();
   const isConnected = useIsConnected();
   const isLoading = useIsLoading();
   const error = useError();
-  const { enhancementData } = useTeacherContextStore();
+  const { enhancementData, generateEnhancement } = useTeacherContextStore();
+
+  // View state management
+  const [currentView, setCurrentView] = useState<ViewType>('landing');
+  const [autoGenerating, setAutoGenerating] = useState(false);
+  const [autoGenerateMessage, setAutoGenerateMessage] = useState('Loading...');
+
   const [hoveredActivity, setHoveredActivity] = useState<{
     name: string;
     description?: string;
@@ -33,7 +43,7 @@ const App: React.FC = () => {
     endsAfter?: number;
   } | null>(null);
 
-  // Check if we should show the enhanced view
+  // Check if we should show the enhanced view based on enhancement data
   const showEnhancedView = enhancementData !== null;
 
   const handleLibraryHover = (activity: ActivityData | null) => {
@@ -65,6 +75,46 @@ const App: React.FC = () => {
     } else {
       setHoveredActivity(null);
     }
+  };
+
+  // Auto-generate handler: complete orchestration and enhance with LLM
+  const handleAutoGenerate = async (ageGroup: string, subject: string) => {
+    setAutoGenerating(true);
+    setAutoGenerateMessage('Building your lesson plan...');
+
+    try {
+      // Step 1: Auto-complete the orchestration
+      const completeResult = await apiService.autoComplete();
+
+      if (!completeResult.success) {
+        throw new Error(completeResult.message || 'Failed to complete orchestration');
+      }
+
+      // Update graph state with completed orchestration
+      await refreshGraphState();
+
+      // Step 2: Enhance with LLM
+      setAutoGenerateMessage('Generating teaching materials...');
+
+      await generateEnhancement(completeResult.state, {
+        ageGroup,
+        subject,
+      });
+
+      // Step 3: Switch to teaching view
+      setCurrentView('teaching');
+    } catch (err: any) {
+      console.error('Auto-generate error:', err);
+      alert(`Failed to generate lesson plan: ${err.message || 'Unknown error'}`);
+    } finally {
+      setAutoGenerating(false);
+      setAutoGenerateMessage('Loading...');
+    }
+  };
+
+  // Custom orchestration handler: go to manual timeline view
+  const handleCustomMode = () => {
+    setCurrentView('orchestration');
   };
 
   // Initialize on mount
@@ -116,6 +166,18 @@ const App: React.FC = () => {
     );
   }
 
+  // Render landing page
+  if (currentView === 'landing') {
+    return (
+      <LandingPage
+        onGenerate={handleAutoGenerate}
+        onCustom={handleCustomMode}
+        isLoading={autoGenerating}
+        loadingMessage={autoGenerateMessage}
+      />
+    );
+  }
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="app-container">
@@ -134,14 +196,17 @@ const App: React.FC = () => {
         </header>
 
         {/* Toolbar */}
-        <ToolbarPanel />
+        <ToolbarPanel
+          entryMode={currentView === 'teaching' ? 'auto' : 'custom'}
+          onBackToLanding={currentView === 'orchestration' ? () => setCurrentView('landing') : undefined}
+        />
 
         {/* Main Content */}
         <div className="app-body">
-          {showEnhancedView ? (
+          {showEnhancedView || currentView === 'teaching' ? (
             /* Enhanced Timeline View with LLM Suggestions */
             <div style={{ width: '100%', height: '100%', overflow: 'auto' }}>
-              <EnhancedTimelineView />
+              <EnhancedTimelineView onBackToLanding={() => setCurrentView('landing')} />
             </div>
           ) : (
             <>
