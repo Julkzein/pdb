@@ -111,13 +111,11 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
           ]);
 
           set({ isLoading: false });
-          console.log('Store initialized successfully');
         } catch (error: any) {
           set({
             error: error.message || 'Failed to initialize',
             isLoading: false
           });
-          console.error('Store initialization failed:', error);
         }
       },
 
@@ -139,7 +137,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         try {
           const activities = await apiService.getActivities();
           set({ activities });
-          console.log(`Loaded ${activities.length} activities`);
         } catch (error: any) {
           set({ error: error.message });
           throw error;
@@ -201,7 +198,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             showRecommendations: false,
             isLoading: false
           });
-          console.log('Graph reset');
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;
@@ -225,7 +221,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             await get().selectGap(selectedGap);
           }
 
-          console.log(`Inserted activity ${actIdx} at position ${position}`);
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;
@@ -240,7 +235,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             graphState: result.state,
             isLoading: false
           });
-          console.log(`Changed activity ${position} to plane ${plane}`);
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;
@@ -262,7 +256,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             await get().selectGap(selectedGap);
           }
 
-          console.log(`Removed activity at position ${position}`);
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;
@@ -277,7 +270,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             graphState: result.state,
             isLoading: false
           });
-          console.log(`Exchanged activities at ${posA} and ${posB}`);
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;
@@ -295,7 +287,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             showRecommendations: true,
             isLoading: false
           });
-          console.log(`Selected gap ${gapIndex}, got ${result.recommendations.length} recommendations`);
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;
@@ -321,7 +312,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
               graphState: result.state,
               isLoading: false
             });
-            console.log(`${result.message}`);
           } else {
             throw new Error(result.message || 'Auto-add failed');
           }
@@ -347,7 +337,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
               await get().selectGap(selectedGap);
             }
 
-            console.log(`${result.message}`);
           } else {
             throw new Error(result.message || 'Auto-add failed');
           }
@@ -364,7 +353,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         try {
           const result = await apiService.saveGraph(filename);
           set({ isLoading: false });
-          console.log(`${result.message}`);
           return result.filename;
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
@@ -383,7 +371,6 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
             showRecommendations: false,
             isLoading: false
           });
-          console.log(`${result.message}`);
         } catch (error: any) {
           set({ error: error.message, isLoading: false });
           throw error;

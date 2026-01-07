@@ -84,7 +84,7 @@ class LLMService:
             )
 
             response_time = time.time() - start_time
-            print(f"[LLM] ✓ Response received in {response_time:.2f}s")
+            print(f"[LLM] [SUCCESS] Response received in {response_time:.2f}s")
 
             # Parse the response
             content = response.choices[0].message.content
@@ -93,7 +93,7 @@ class LLMService:
             enhancement_data = json.loads(content)
 
             total_time = time.time() - start_time
-            print(f"[LLM] ✓ Total processing time: {total_time:.2f}s")
+            print(f"[LLM] [SUCCESS] Total processing time: {total_time:.2f}s")
             print(f"[LLM] Tokens - Input: {response.usage.prompt_tokens}, Output: {response.usage.completion_tokens}")
 
             # Add metadata
@@ -117,29 +117,29 @@ class LLMService:
         except httpx.ConnectTimeout as e:
             elapsed = time.time() - start_time
             error_msg = f"Connection timeout after {elapsed:.1f}s - DeepSeek API took too long to connect. This may be due to network issues or API load. Please try again."
-            print(f"[LLM] ✗ CONNECTION TIMEOUT: {error_msg}")
+            print(f"[LLM] [FAILED] CONNECTION TIMEOUT: {error_msg}")
             raise Exception(error_msg)
 
         except httpx.ReadTimeout as e:
             elapsed = time.time() - start_time
             error_msg = f"Read timeout after {elapsed:.1f}s - DeepSeek API connected but took too long to respond. Try reducing the number of activities or simplifying the request."
-            print(f"[LLM] ✗ READ TIMEOUT: {error_msg}")
+            print(f"[LLM] [FAILED] READ TIMEOUT: {error_msg}")
             raise Exception(error_msg)
 
         except httpx.HTTPStatusError as e:
             error_msg = f"DeepSeek API error (HTTP {e.response.status_code}): {e.response.text}"
-            print(f"[LLM] ✗ HTTP ERROR: {error_msg}")
+            print(f"[LLM] [FAILED] HTTP ERROR: {error_msg}")
             raise Exception(error_msg)
 
         except json.JSONDecodeError as e:
             error_msg = f"Failed to parse DeepSeek response as JSON: {str(e)}"
-            print(f"[LLM] ✗ JSON PARSE ERROR: {error_msg}")
+            print(f"[LLM] [FAILED] JSON PARSE ERROR: {error_msg}")
             raise Exception(error_msg)
 
         except Exception as e:
             elapsed = time.time() - start_time
             error_msg = f"Failed to enhance orchestration after {elapsed:.1f}s: {str(e)}"
-            print(f"[LLM] ✗ GENERAL ERROR: {error_msg}")
+            print(f"[LLM] [FAILED] GENERAL ERROR: {error_msg}")
             raise Exception(error_msg)
 
     def _build_system_prompt(self) -> str:

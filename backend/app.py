@@ -89,11 +89,11 @@ initialize_graph()
 try:
     llm_service = create_llm_service(library)
     if llm_service:
-        print("✓ LLM service initialized with DeepSeek API (super cheap!)")
+        print("[SUCCESS] LLM service initialized with DeepSeek API (super cheap!)")
     else:
-        print("⚠ LLM service not available (no DEEPSEEK_API_KEY configured)")
+        print("[WARNING] LLM service not available (no DEEPSEEK_API_KEY configured)")
 except Exception as e:
-    print(f"⚠ LLM service initialization failed: {e}")
+    print(f"[WARNING] LLM service initialization failed: {e}")
     llm_service = None
 
 
@@ -741,7 +741,7 @@ def enhance_orchestration():
         # Call LLM service
         result = llm_service.enhance_orchestration(orchestration, age_group, subject)
 
-        print(f"[API] ✓ Enhancement completed successfully")
+        print(f"[API] [SUCCESS] Enhancement completed successfully")
 
         return jsonify({
             "success": True,
@@ -751,7 +751,7 @@ def enhance_orchestration():
 
     except Exception as e:
         error_message = str(e)
-        print(f"[API] ✗ Enhancement failed: {error_message}")
+        print(f"[API] [FAILED] Enhancement failed: {error_message}")
 
         # Determine appropriate HTTP status code
         if "timeout" in error_message.lower():

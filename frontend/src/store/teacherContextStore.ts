@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { OrchestrationGraphState } from '../types/domain';
-import { enhanceOrchestration } from '../services/apiService';
+import { apiService } from '../services/apiService';
 
 export interface TeacherContext {
   ageGroup: string;
@@ -89,7 +89,7 @@ export const useTeacherContextStore = create<TeacherContextState>((set, get) => 
     set({ isLoading: true, error: null });
 
     try {
-      const result = await enhanceOrchestration(orchestration, context.ageGroup, context.subject);
+      const result = await apiService.enhanceOrchestration(orchestration, context.ageGroup, context.subject);
 
       set({
         teacherContext: context,

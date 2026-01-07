@@ -446,13 +446,6 @@ const OrchestrationTimeline: React.FC<OrchestrationTimelineProps> = ({ onActivit
   // Debug: Log activities to check for overlaps
   React.useEffect(() => {
     if (graphState) {
-      console.log(' Current activities:', graphState.activities.map(act => ({
-        name: act.activityName,
-        plane: act.plane,
-        startsAfter: act.startsAfter,
-        endsAfter: act.endsAfter,
-        time: act.time
-      })));
     }
   }, [graphState]);
 

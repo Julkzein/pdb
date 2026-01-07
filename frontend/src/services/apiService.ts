@@ -15,6 +15,9 @@ import {
 } from '../types/domain';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:5000/api';
+const DEFAULT_TIMEOUT_MS = 30000;
+const AUTO_COMPLETE_TIMEOUT_MS = 60000;
+const LLM_ENHANCEMENT_TIMEOUT_MS = 120000;
 
 class ApiService {
   private client: AxiosInstance;
@@ -25,7 +28,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
-      timeout: 30000, // Increased to 30 seconds to handle backend restarts
+      timeout: DEFAULT_TIMEOUT_MS,
     });
 
     // Add response interceptor for error handling
@@ -181,7 +184,7 @@ class ApiService {
     goalReached: boolean;
     state: OrchestrationGraphState
   }> {
-    const response = await this.client.post('/graph/auto-complete', {}, { timeout: 60000 });
+    const response = await this.client.post('/graph/auto-complete', {}, { timeout: AUTO_COMPLETE_TIMEOUT_MS });
     return response.data;
   }
 
@@ -228,8 +231,6 @@ class ApiService {
     ageGroup: string,
     subject: string
   ): Promise<any> {
-    // Increase timeout for LLM requests (can be slow)
-    // Based on ~10s per activity, allow up to 120s for 5+ activities
     const response = await this.client.post(
       '/enhance-orchestration',
       {
@@ -237,7 +238,7 @@ class ApiService {
         ageGroup,
         subject,
       },
-      { timeout: 120000 } // 120 second (2 minute) timeout for LLM
+      { timeout: LLM_ENHANCEMENT_TIMEOUT_MS }
     );
     return response.data;
   }
@@ -245,13 +246,6 @@ class ApiService {
 
 // Export singleton instance
 export const apiService = new ApiService();
-
-// Export helper function for enhance orchestration
-export const enhanceOrchestration = (
-  orchestration: OrchestrationGraphState,
-  ageGroup: string,
-  subject: string
-) => apiService.enhanceOrchestration(orchestration, ageGroup, subject);
 
 // Export class for testing
 export default ApiService;
