@@ -105,6 +105,7 @@ One may find the repo for this project here \url{https://github.com/Julkzein/pdb
 
 \subsection{Orchestration in Educational Technology}
 
+
 Educational orchestration refers to coordinating learning activities, resources, and social configurations to achieve pedagogical goals \cite{Dillenbourg2011,Prieto2011}. Orchestration graphs represent lesson plans as state-space transitions, where activities move students from one knowledge state to another.
 
 \subsection{Activity-Based Learning Models}
@@ -157,7 +158,7 @@ The core orchestration algorithms are preserved from the original Qt/QML impleme
 
 The primary modification was fixing the distance metric for gap evaluation. The original Euclidean distance $d(s_1, s_2) = \sqrt{\sum_{i}(s_{1,i} - s_{2,i})^2}$ scores activities poorly when current state exceeds their prerequisites, even though exceeding prerequisites is pedagogically acceptable. Above all, it stops some valuable activities to be considered. The fix uses forward-only distance $d_{\text{forward}}(s_1, s_2) = \sqrt{\sum_{i: s_{1,i} < s_{2,i}}(s_{1,i} - s_{2,i})^2}$, which only considers dimensions requiring progress.
 
-This bug particularly affected scenarios with unbalanced skill profiles. Consider the lesson shown in Figure~\ref{fig:unbalanced_example}, where after two fluency focused activities, students have high fluency (0.7) but a mid depth (0.22). Here, the engine would wrongly not propose activities needing low fluency as the student would be ``overqualified'' even if this was the optimal activity in terms of building depth. However, one may argue that if an ``overqualified'' student is exposed to an easier exercice, they might be less inclined to follow it which could justify the original distant metric even though it is less optimal. 
+This bug particularly affected scenarios with unbalanced skill profiles. Consider the lesson shown in Figure~\ref{fig:unbalanced_example}, where after two fluency focused activities, students have high fluency (0.7) but a low depth (0.22). Here, the engine would wrongly not propose activities needing low fluency as the student would be ``overqualified'' even if this was the optimal activity in terms of building depth. However, one may argue that if an ``overqualified'' student is exposed to an easier exercise, they might be less inclined to follow it which could justify the original distance metric even though it is less optimal. 
 
 \begin{figure}[!htb]
     \centering
@@ -239,11 +240,11 @@ This project makes three concrete contributions beyond Samuel's original work:
 
 \subsection{Limitations and Reflections}
 
-The greedy recommendation algorithm can make locally optimal choices that prevent reaching the goal. Auto-complete occasionally fails even when valid solutions exist, Samuel's thesis proposes backtracking, which I did not implement. Increasing to hire dimensions to better represent learning may need complications of the engine. The Flask API exposes internal data structures directly, creating tight coupling between frontend and backend, a better approach could use explicit API schemas like Pydantic or OpenAPI to provide a stable contract.
+The greedy recommendation algorithm can make locally optimal choices that prevent reaching the goal. Auto-complete occasionally fails even when valid solutions exist, Samuel's thesis proposes backtracking, which I did not implement. Increasing to higher dimensions to better represent learning may need complications of the engine. The Flask API exposes internal data structures directly, creating tight coupling between frontend and backend, a better approach could use explicit API schemas like Pydantic or OpenAPI to provide a stable contract.
 
 \subsection{Real-World Testing and Impact}
 
-I tested the system during several workshops I gave and made two friends test it for workshops they were giving. The auto-generated full orchestration graph wer not personalised enough but both appreciated manually creating their orchestration graphs, one even adding an activity. LLM-generated examples received mixed feedback: the exercises given were not the best (although treated subjects were complex) but the examples were pertinent and the sources provided of great use. Maybe refining the prompts would be a good domain to explore. 
+I tested the system during several workshops I gave and made two friends test it for workshops they were giving. The auto-generated full orchestration graphs were not personalised enough but both appreciated manually creating their orchestration graphs, one even adding an activity. LLM-generated examples received mixed feedback: the exercises given were not the best (although treated subjects were complex) but the examples were pertinent and the sources provided of great use. Maybe refining the prompts would be a good domain to explore. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
