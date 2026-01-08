@@ -63,7 +63,7 @@ class ApiService {
     );
   }
 
-  // ==================== HEALTH & CONFIG ==================== //
+  // health
 
   async healthCheck(): Promise<HealthResponse> {
     const response = await this.client.get<HealthResponse>('/health');
@@ -80,7 +80,7 @@ class ApiService {
     return response.data.planes;
   }
 
-  // ==================== ACTIVITIES ==================== //
+  // activities 
 
   async getActivities(): Promise<ActivityData[]> {
     const response = await this.client.get<ActivityData[]>('/activities');
@@ -97,7 +97,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== GRAPH STATE ==================== //
+  //graph state
 
   async getGraphState(): Promise<OrchestrationGraphState> {
     const response = await this.client.get<OrchestrationGraphState>('/graph/state');
@@ -109,7 +109,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== GRAPH MANIPULATION ==================== //
+  //graph manip
 
   async insertActivity(
     actIdx: number,
@@ -144,7 +144,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== GAPS & RECOMMENDATIONS ==================== //
+  // gaps & recommendation
 
   async getGaps(): Promise<{
     hardGapsList: number[];
@@ -165,7 +165,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== AUTO-ADD ==================== //
+  // auto add
 
   async autoAdd(): Promise<{ success: boolean; message: string; state?: OrchestrationGraphState }> {
     const response = await this.client.post('/graph/auto-add');
@@ -188,7 +188,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== SAVE/LOAD ==================== //
+  // save & load
 
   async saveGraph(filename?: string): Promise<{ success: boolean; filename: string; message: string }> {
     const response = await this.client.post('/graph/save', { filename });
@@ -200,7 +200,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== VISUALIZATION ==================== //
+  // Visualisation 
 
   async visualizeGraph(): Promise<{ success: boolean; image: string; format: string }> {
     const response = await this.client.get('/graph/visualize');
@@ -212,7 +212,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== EXPORT/PRINT ==================== //
+  // Export 
 
   async exportJSON(): Promise<OrchestrationGraphState> {
     const response = await this.client.get<OrchestrationGraphState>('/graph/export-json');
@@ -224,7 +224,7 @@ class ApiService {
     return response.data;
   }
 
-  // ==================== LLM ENHANCEMENT ==================== //
+  // LLLM 
 
   async enhanceOrchestration(
     orchestration: OrchestrationGraphState,

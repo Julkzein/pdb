@@ -1,6 +1,5 @@
 /**
  * Main App Component - Orchestration Graph Scheduler
- * Complete reimplementation in React TypeScript
  */
 
 import React, { useEffect, useState } from 'react';

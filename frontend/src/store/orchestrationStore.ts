@@ -15,7 +15,7 @@ import {
 import { apiService } from '../services/apiService';
 
 interface OrchestrationStore {
-  // ==================== STATE ==================== //
+  // state
 
   // Connection
   isConnected: boolean;
@@ -35,7 +35,7 @@ interface OrchestrationStore {
   recommendations: ContextActivity[];
   showRecommendations: boolean;
 
-  // ==================== ACTIONS ==================== //
+  // actions
 
   // Initialization
   initialize: () => Promise<void>;
@@ -77,7 +77,7 @@ interface OrchestrationStore {
 export const useOrchestrationStore = create<OrchestrationStore>()(
   devtools(
     (set, get) => ({
-      // ==================== INITIAL STATE ==================== //
+      // initial state
 
       isConnected: false,
       isLoading: false,
@@ -93,7 +93,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
       recommendations: [],
       showRecommendations: false,
 
-      // ==================== INITIALIZATION ==================== //
+      // initialisation 
 
       initialize: async () => {
         set({ isLoading: true, error: null });
@@ -131,7 +131,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         }
       },
 
-      // ==================== LIBRARY ==================== //
+      // Library 
 
       loadActivities: async () => {
         try {
@@ -175,7 +175,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         }
       },
 
-      // ==================== GRAPH STATE ==================== //
+      // graph state
 
       refreshGraphState: async () => {
         try {
@@ -204,7 +204,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         }
       },
 
-      // ==================== GRAPH MANIPULATION ==================== //
+      // Graph Manipulation
 
       insertActivity: async (actIdx, position, plane?, time?) => {
         set({ isLoading: true });
@@ -276,7 +276,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         }
       },
 
-      // ==================== GAP SELECTION ==================== //
+      // Gap Selection
 
       selectGap: async (gapIndex) => {
         set({ isLoading: true, selectedGap: gapIndex });
@@ -301,7 +301,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         });
       },
 
-      // ==================== AUTO-ADD ==================== //
+      // Auto add
 
       autoAdd: async () => {
         set({ isLoading: true });
@@ -346,7 +346,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         }
       },
 
-      // ==================== SAVE/LOAD ==================== //
+      // Save
 
       saveGraph: async (filename?) => {
         set({ isLoading: true });
@@ -377,7 +377,7 @@ export const useOrchestrationStore = create<OrchestrationStore>()(
         }
       },
 
-      // ==================== UTILITY ==================== //
+      // Utility 
 
       setError: (error) => {
         set({ error });

@@ -1,6 +1,5 @@
 /**
  * Orchestration Timeline - Main swimlane timeline component
- * Fixed version with smooth drag-and-drop - NO STACKING!
  */
 
 import React, { useState } from 'react';
