@@ -234,9 +234,9 @@ This project makes three concrete contributions beyond Samuel's original work:
 
 \textbf{Web Platform Migration}: I successfully decoupled the orchestration algorithms from Qt dependencies, creating pure Python modules that can be reused in other projects. This required reverse-engineering Samuel's signal/slot architecture to understand state update flows, which was more difficult than anticipated because Qt's property binding system has implicit dependencies that are not visible in the code. The resulting Flask API provides 15 endpoints covering all orchestration operations, enabling future integration with learning management systems or mobile applications.
 
-\textbf{Distance Metric Correction}: The forward-only distance function fixes a subtle but impactful bug in the original recommendation algorithm. This represents an edge case than can however block an otherwise optimal activity. While this is a small algorithmic change, it's interesting to see how the engine evaluates learning gaps when students have unbalanced skill profiles.
+\textbf{Distance Metric Correction}: The forward-only distance function fixes a subtle but impactful bug in the original recommendation algorithm. This represents an edge case that can block an otherwise optimal activity. While this is a small algorithmic change, it's interesting to see how the engine evaluates learning gaps when students have unbalanced skill profiles.
 
-\textbf{LLM-Enhanced Teacher Materials}: The DeepSeek integration generates contextualized teaching resources automatically. However, I must acknowledge this feature's limitations as the prompts for the resource generations where not further studied or engineered.  This remains a proof-of-concept rather than a production-ready feature.
+\textbf{LLM-Enhanced Teacher Materials}: The DeepSeek integration generates contextualized teaching resources automatically. However, I must acknowledge this feature's limitations as the prompts for the resource generations were not further studied or engineered.  This remains a proof-of-concept rather than a production-ready feature.
 
 \subsection{Limitations and Reflections}
 
