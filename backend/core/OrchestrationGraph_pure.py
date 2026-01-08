@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pure Python implementation of OrchestrationGraph (no Qt dependencies)
 Core orchestration engine for lesson planning
@@ -42,7 +41,7 @@ class OrchestrationGraphData:
         self.totTime = 0
 
         # Gap tracking
-        self.hardGapsCount = 1  # Initially: start -> goal is one gap
+        self.hardGapsCount = 1  # Initially start -> goal is one gap
         self.remainingGapsDistance = start.distance_onlyForward(goal)
         self.hardGapsList = [0]  # Gap at position 0 (before first activity)
 
@@ -63,7 +62,8 @@ class OrchestrationGraphData:
                 f"Hard gaps: {self.hardGapsCount} (distance: {self.remainingGapsDistance:.3f})\n"
                 f"Goal reached: {self.reached.isPast(self.goal)}\n")
 
-    # ==================== FILE OPERATIONS ==================== #
+
+    # File Saving 
 
     def saveAsFile(self, filename):
         """Save orchestration graph to pickle file"""
@@ -93,7 +93,7 @@ class OrchestrationGraphData:
         print(f"Loaded from {filename}")
         return obj
 
-    # ==================== STATE RECALCULATION ==================== #
+    #state recalc
 
     def reEvaluateData(self):
         """
@@ -165,7 +165,7 @@ class OrchestrationGraphData:
         self.hardGapsCount = len(gaps)
         self.remainingGapsDistance = totalDistance
 
-    # ==================== GAP EVALUATION FOR RECOMMENDATIONS ==================== #
+    # Gap Evaluation 
 
     def evaluateFor(self, actIdx, position):
         """
@@ -201,7 +201,6 @@ class OrchestrationGraphData:
         # Check if prerequisites can be met
         if not currentState.isPast(actData.pcond):
             # Activity requires advancement just to start
-            # This is allowed, but tracked
             pass
 
         # Check if activity has been used too many times
@@ -280,7 +279,7 @@ class OrchestrationGraphData:
 
         self.currentListForSelectedGap = evaluations
 
-    # ==================== MODIFICATION OPERATIONS ==================== #
+    # Modification Operations for orchestartion graphs
 
     def insert(self, actIdx, position, plane=None, time=None):
         """
@@ -501,7 +500,7 @@ class OrchestrationGraphData:
 
         return success
 
-    # ==================== SERIALIZATION FOR JSON API ==================== #
+    # Json API Serialization 
 
     def get_gap_pvalue_info(self):
         """
@@ -577,7 +576,7 @@ class OrchestrationGraphData:
         }
 
 
-# ==================== TEST FUNCTIONS ==================== #
+    # Tests Functions
 
 def test_orchestration():
     """Test orchestration graph operations"""

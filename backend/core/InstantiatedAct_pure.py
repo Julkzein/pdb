@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pure Python implementation of InstantiatedAct (no Qt dependencies)
 Represents a specific instance of an activity in the lesson timeline
@@ -30,7 +29,7 @@ class InstantiatedActData:
         # Calculate state progression
         self.pValStart = pValStart
 
-        # Ensure prerequisites are met
+        # Ensure prerequisites ok 
         if not pValStart.isPast(actData.pcond):
             # Need to advance to meet prerequisites
             self.pValStart = pValStart.needToReach(actData.pcond)
@@ -115,7 +114,7 @@ class InstantiatedActData:
         )
 
 
-# Test function
+# Test func
 def test_instantiated_act():
     """Test instantiated activity operations"""
     from Activity_pure import ActivityData

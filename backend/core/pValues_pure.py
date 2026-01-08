@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pure Python implementation of pValues (no Qt dependencies)
 Parametric values for tracking student understanding progression

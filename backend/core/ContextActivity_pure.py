@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pure Python implementation of ContextActivity (no Qt dependencies)
 Represents an activity with evaluation metadata for gap recommendations

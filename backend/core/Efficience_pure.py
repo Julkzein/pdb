@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 Pure Python implementation of Efficience (no Qt dependencies)
 Scoring heuristics for evaluating activity effectiveness in filling gaps
 """
 
 # Configuration
-PRINT_DETAILS = False  # Set to True for debugging
+PRINT_DETAILS = False  # Set to True if debugging
 THRESHOLD = 0.05
 
 

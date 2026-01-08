@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pure Python implementation of Activity (no Qt dependencies)
 Represents activity templates from the library
@@ -7,7 +6,7 @@ Represents activity templates from the library
 from pValues_pure import pVal, InterPVal
 
 
-# Activity descriptions for UI hover information
+# for UI Hover 
 ACTIVITY_DESCRIPTIONS = {
     'TellTheClass': 'Teacher presents information directly to the entire class',
     'DesirableDifficultyProblem': 'Students work on challenging problems that enhance long-term retention',
@@ -39,10 +38,10 @@ class ActivityData:
         self.name = data[0]
         self.description = data[1] if len(data) > 1 and data[1] else None
 
-        # Parse p-condition (prerequisite)
+        # Parse p-condition
         self.pcond = pVal.fromString(data[2])
 
-        # Determine if activity has flexible time
+        # flexible time ? 
         if data[7] != '':
             # Has min/max/default time
             self.canChangeTime = True
@@ -52,7 +51,7 @@ class ActivityData:
             self.maxT = int(data[6])
             self.defT = int(data[7])
         else:
-            # Fixed time (only max time given)
+            # Fixed time (only max time)
             self.canChangeTime = False
             minEffect = data[5]
             maxEffect = data[5]
@@ -60,7 +59,7 @@ class ActivityData:
             self.maxT = int(data[6])
             self.defT = int(data[6])
 
-        # Parse p-effect (interpolated over time)
+        # Parse p-effect
         self.peffect = InterPVal.fromStrings(minEffect, maxEffect, self.minT, self.maxT, self.defT)
 
         # Max repetitions allowed
@@ -199,7 +198,7 @@ class Library:
 
         with open(filename, 'r', encoding='utf-8') as f:
             reader = csv.reader(f)
-            header = next(reader)  # Skip header
+            header = next(reader) 
 
             for idx, row in enumerate(reader):
                 if row and any(cell.strip() for cell in row):  # Skip empty rows
@@ -260,7 +259,7 @@ class Library:
             shutil.copy2(self.filename, backup_path)
             print(f"Created backup: {backup_path}")
 
-        # Write to temp file first (atomic operation)
+        # Write to temp file first 
         temp_file = f"{self.filename}.tmp"
         with open(temp_file, 'w', encoding='utf-8') as f:
             # Write header
