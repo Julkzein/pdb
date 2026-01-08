@@ -67,7 +67,7 @@ The application will open in your browser at `http://localhost:3000`
 ### Landing Page
 ![Landing Page](reports/Landing.png)
 
-The entry point offers two options: auto-generate a complete lesson plan from age group and subject, or build a custom orchestration manually.
+The landing page offers two options: auto-generate a complete lesson plan from age group and subject, or build a custom orchestration manually.
 
 ### Orchestration Timeline
 ![Orchestration Timeline](reports/Orchestration_Timeline.png)

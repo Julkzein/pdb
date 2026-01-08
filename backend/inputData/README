@@ -1,11 +1,12 @@
 This folder contains all input data.
 The data consist of the general desription (pre-instantiation) of the activities in the available library.
 They are stored in a csv file with a first-line-header:
-Name,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions, def plane
+Name,Description,p-condition,min p-effect,min time,max p-effect,max time,def time,max repetitions,def plane
 
 Each column is described below. Three columns are optionnals and marked as "opt".
 
     name:           A string representing the activity. It is better if it fits in 15 caracters but the new GUI can handle longer words. Look at TextShortener.py for more information.
+    Description:    A human-readable description of the activity's purpose and pedagogical function.
     p-condition:    A tuple of two numbers representing (the required fluency, the required depth) in order to start the activity.
 opt min p-effect:   A tuple representing the minimal (fluency increase, depth increase) if the activity is done during its minimal time.
 opt min time:       A minimal number of minutes during which the activity can be done (with minimal effect)

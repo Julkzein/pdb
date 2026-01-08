@@ -38,7 +38,7 @@ sorting=ynt
 \fancyfoot[R]{\thepage}%/\pageref{LastPage}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\title{A Web Platform for\\Orchestration Graph-Based Lesson Planning}
+\title{A Web Platform for\\Orchestration Graph-Based \\ Lesson Planning}
 \author{Jules Delforge}
 \newcommand{\thesupervisor}{Pierre Dillenbourg}
 \date{\today}
@@ -71,7 +71,7 @@ sorting=ynt
 	\rule{\linewidth}{0.2 mm} \\[1.5 cm]
 			\emph{Author: }\\
 			\theauthor\\[2cm]	
-            \emph{Professor and Suppervisor:} \\
+            \emph{Professor and Supervisor:} \\
             Pierre Dillenbourg\\[2cm]
 	{\large \thedate}\\[2 cm]
 	\vfill
@@ -86,7 +86,8 @@ sorting=ynt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Acknowledgments}
 
-I am grateful to Pierre Dillenbourg for introducing me to orchestration graphs and for supervising this project. His suggestions to focus on web deployment rather than algorithmic innovation guided the project's direction.
+I am grateful to Pierre Dillenbourg who presented the concept of Orchestration Graphs and the first ideas about how to build off of Samuel’s project. Then, he provided supervision
+and insightful ideas throughout the semester
 
 I acknowledge the use of CLAUDE (Anthropic) for planning and overview when I lacked the ability to see where the issue was coming from or when I wasn't sure how to proceed. 
 
@@ -95,7 +96,7 @@ I acknowledge the use of CLAUDE (Anthropic) for planning and overview when I lac
 
 Educational lesson planning requires balancing multiple pedagogical constraints: learning objectives, time budgets, prerequisite knowledge, and organizational structures. This project builds a web-based application for designing lesson plans leveraging \emph{orchestration graphs}, a computational framework that models student understanding as a progression through a multi-dimensional state space \cite{Belisle2024}. The work modernizes Samuel Bélisle's Qt/QML desktop application by migrating to a full-stack web platform while preserving the core pedagogical algorithms.
 
-This work builds directly upon the orchestration graph engine developed by Samuel Bélisle \cite{Belisle2024}, available at \url{https://github.com/Katokoda/OG_QML}. While the core pedagogical algorithms are preserved, the contribution of this project lies in migrating the system to a web-based architecture and making targeted corrections to the recommendation logic. These changes aim to improve accessibility and algorithmic behavior without altering the conceptual foundations of orchestration graphs.
+This work builds directly upon the orchestration graph engine developed by Samuel Bélisle \cite{Belisle2024}, available at \url{https://github.com/Katokoda/OG_QML}. While the core pedagogical algorithms are mostly preserved, the contribution of this project lies in migrating the system to a web-based architecture and making targeted corrections to the recommendation logic. These changes aim to improve accessibility and algorithmic behavior without altering the conceptual foundations of orchestration graphs.
 
 One may find the repo for this project here \url{https://github.com/Julkzein/pdb}
 
@@ -104,7 +105,7 @@ One may find the repo for this project here \url{https://github.com/Julkzein/pdb
 
 \subsection{Orchestration in Educational Technology}
 
-Educational orchestration refers to coordinating learning activities, resources, and social configurations to achieve pedagogical goals \cite{Dillenbourg2011,Prieto2011}. Orchestration graphs represent this process as state-space transitions, where activities move students from one knowledge state to another.
+Educational orchestration refers to coordinating learning activities, resources, and social configurations to achieve pedagogical goals \cite{Dillenbourg2011,Prieto2011}. Orchestration graphs represent lesson plans as state-space transitions, where activities move students from one knowledge state to another.
 
 \subsection{Activity-Based Learning Models}
 
@@ -118,17 +119,17 @@ The orchestration graph approach uses a greedy gap-filling algorithm that priori
 
 \subsection{System Architecture}
 
-The application uses a client-server architecture where the React frontend communicates with a Flask backend through a REST API. This separation emerged as necessary after an early attempt to integrate Samuel's Qt code directly into a monolithic structure proved unmaintainable.
+The application uses a client-server architecture where the React frontend communicates with a Flask backend through a REST API. This separation emerged as necessary after an early attempt to integrate Samuel's Qt code directly.
 
 \subsubsection{Backend Architecture}
 
-The backend is built in pure Python 3.8+ using Flask, deliberately avoiding any Qt dependencies from Samuel's original implementation. The core challenge was extracting the orchestration algorithms from their Qt signal/slot structure while preserving exact behavior. From there were created the \texttt{*\_pure.py} versions of each module that replaced Qt signals with simple Python return values. This took longer than anticipated because Samuel's code relied heavily on Qt's property binding system for state updates. I had to manually trace each signal connection to understand the update flow.
+The backend is built in pure Python 3.8+ using Flask, deliberately avoiding any Qt dependencies from Samuel's original implementation. The main challenge was extracting the orchestration algorithms from their Qt signal/slot structure while preserving exact behavior. From there were created the \texttt{*\_pure.py} versions of each module that replaced Qt signals with simple Python return values. This took longer than anticipated because Samuel's code relied heavily on Qt's property binding system for state updates. I had to manually trace each signal connection to understand the update flow.
 
-Initially, all endpoints of the Flask API were synchronous, which caused the frontend to freeze during expensive operations like auto-complete. Recommendation endpoints were refactored to use longer timeouts (60-120 seconds) while keeping simple operations fast (30 seconds). This wasn't and optimal solution as a proper solution would use WebSockets for long operations—but it was pragmatic given time constraints.
+Initially, all endpoints of the Flask API were synchronous, which caused the frontend to freeze during expensive operations like auto-complete. Recommendation endpoints were refactored to use longer timeouts while keeping simple operations fast. This wasn't an optimal solution as a proper solution would use WebSockets for long operations—but it was pragmatic given time constraints.
 
 \subsubsection{Frontend Architecture}
 
-The frontend uses React 18 with TypeScript, primarily because TypeScript's type checking caught numerous bugs during development when translating between Samuel's Python data structures and JavaScript objects. Zustand was chosen for state management over Redux because the orchestration state is fundamentally a single object tree that maps well to Zustand's simple store model. React DnD handles drag-and-drop, though I initially tried react-beautiful-dnd before discovering it couldn't handle the absolute positioning requirements of the timeline (activities must be positioned by time, not insertion order).
+The frontend uses React 18 with TypeScript, primarily because TypeScript's type checking caught numerous bugs during development when translating between Samuel's Python data structures and JavaScript objects. Zustand was chosen for state management over Redux because the orchestration state is fundamentally a single object tree that maps well to Zustand's simple store model. React DnD handles drag-and-drop, though I initially tried react-beautiful-dnd before discovering that it couldn't handle the absolute positioning requirements of the timeline (activities must be positioned by time, not insertion order).
 
 The most challenging architectural decision was handling state synchronization between frontend and backend. Every activity insertion triggers a backend recalculation of the entire orchestration graph (gap evaluation, state progression, constraint checking). I initially tried optimistic updates where the UI would update immediately and roll back on validation failure, but this caused flicker when activities were rejected. The current implementation blocks on backend responses, which feels slower but prevents confusing state inconsistencies. A better solution would compute preview states client-side before committing to the backend, but this would require duplicating Samuel's algorithms in TypeScript.
 
@@ -140,35 +141,48 @@ Pivoting to building directly around Samuel's engine required creating the clean
 
 \subsection{Our Model of a Lesson}
 
-A lesson in the orchestration graph system is represented as a sequence of activities that take the class from an initial state to a target goal state. The model reduces the state of each student's understanding into two values: $p_{\text{depth}}$ (depth of understanding) and $p_{\text{fluency}}$ (fluency in achieving the task), both ranging from zero to one. Each activity has prerequisite conditions ($c_{\text{depth}}, c_{\text{fluency}}$) that must be satisfied and produces effects ($e_{\text{depth}}, e_{\text{fluency}}$) that modify the student state. Activities are positioned sequentially in time and assigned to one of three organizational planes: Individual, Team, or Class. The system enforces temporal constraints through a time budget, representing lesson time. See Samuel's report \cite{Belisle2024} for more details and explanation
+A lesson in the orchestration graph system is represented as a sequence of activities that take the class from an initial state to a target goal state. The model reduces the state of each student's understanding into two values: $p_{\text{depth}}$ (depth of understanding) and $p_{\text{fluency}}$ (fluency in achieving the task), both ranging from zero to one. Each activity has prerequisite conditions ($c_{\text{depth}}, c_{\text{fluency}}$) that must be satisfied and produces effects ($e_{\text{depth}}, e_{\text{fluency}}$) that modify the student state. Activities are positioned sequentially in time and assigned to one of three organizational planes: Individual, Team, or Class. The system enforces temporal constraints through a time budget, representing lesson time. See Samuel's report \cite{Belisle2024} for more details and explanation.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{Orchestration_Graph.png}
+\caption{State-space visualization showing learning trajectory through fluency-depth space. Orange X: initial state, blue X: goal state.}
+\label{fig:graph}
+\end{figure}
+
 
 \subsection{Core Algorithms}
 
-The core orchestration algorithms are preserved from the original Qt/QML implementation \cite{Belisle2024}. The system evaluates learning gaps where the current state is insufficient to reach prerequisites or goals, and employs a greedy recommendation algorithm that selects activities maximizing learning progress per unit time.
-
-\subsubsection{Algorithm Corrections}
+The core orchestration algorithms are preserved from the original Qt/QML implementation \cite{Belisle2024}. The system evaluates learning gaps where the current state is insufficient to reach prerequisites or goals, and employs a greedy recommendation algorithm that selects activities maximizing learning progress per unit time. Some modifications were done on this algorithm. 
 
 The primary modification was fixing the distance metric for gap evaluation. The original Euclidean distance $d(s_1, s_2) = \sqrt{\sum_{i}(s_{1,i} - s_{2,i})^2}$ scores activities poorly when current state exceeds their prerequisites, even though exceeding prerequisites is pedagogically acceptable. Above all, it stops some valuable activities to be considered. The fix uses forward-only distance $d_{\text{forward}}(s_1, s_2) = \sqrt{\sum_{i: s_{1,i} < s_{2,i}}(s_{1,i} - s_{2,i})^2}$, which only considers dimensions requiring progress.
 
-This bug particularly affected scenarios with unbalanced skill profiles. Consider the lesson shown in Figure~\ref{fig:unbalanced_example}, where after two fluency-oriented activities, students have high fluency (0.7) but mid depth (0.22). Here, the engine would wrongly not propose activities needing low fluency as the student would be "overqualified" even if this was the optimal activity in terms of building depth. However, one may argue that if an "overqualified" student is exposed to an easier exercise, they might be less inclined to follow it which could justify the original distance metric even though it is less optimal.
+This bug particularly affected scenarios with unbalanced skill profiles. Consider the lesson shown in Figure~\ref{fig:unbalanced_example}, where after two fluency focused activities, students have high fluency (0.7) but a mid depth (0.22). Here, the engine would wrongly not propose activities needing low fluency as the student would be ``overqualified'' even if this was the optimal activity in terms of building depth. However, one may argue that if an ``overqualified'' student is exposed to an easier exercice, they might be less inclined to follow it which could justify the original distant metric even though it is less optimal. 
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{HighFluency_LowDepth.png}
-\caption{Example of unbalanced skill profile where Euclidean distance fails. After fluency-building activities, state is (0.7, 0.22). The original metric penalizes depth-building activities with low fluency prerequisites, blocking optimal progression.}
-\label{fig:unbalanced_example}
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.75\textwidth]{HighFluency_LowDepth.png}
+    \caption{Example of unbalanced skill progression requiring depth-focused activities.}
+    \label{fig:unbalanced_example}
 \end{figure}
 
-I also corrected a constraint validation bug in \texttt{okeyToTake()} that only checked the \texttt{noProgress} flag, allowing exhausted or over-budget activities. The fix adds \texttt{exhausted} and \texttt{tooLong} checks, preventing auto-complete infinite loops.
+I also corrected a constraint validation bug in \texttt{okeyToTake()} that only checked the \texttt{noProgress} flag, allowing exhausted or over-budget activities. 
 
 
 \subsection{User Interface Design}
 
 The interface consists of a timeline with three lanes (Individual, Team, Class), an activity library panel with draggable cards, and a management toolbar. Activities are positioned by \texttt{startsAfter} time with drag-and-drop placement, hover information, gap indicators, and real-time validation. Matplotlib generates 2D state-space visualizations as static PNGs.
 
-\subsubsection{LLM Integration}
 
-The application integrates DeepSeek AI to generate age-appropriate teaching resources including explanations, prompts, materials, and assessments. The implementation uses a two-tier prompt structure: a global system prompt defining the educational consultant role and output format, plus activity-specific prompts from the CSV library. DeepSeek was selected for cost-effectiveness. Only non-sensitive data is transmitted (activity descriptions, age group, subject) making the choice of LLM not so important. 
+The application integrates DeepSeek AI to generate age-appropriate teaching resources including explanations, prompts, materials, and assessments. The implementation uses a two-tier prompt structure for enlarged context: a global system prompt defining the educational consultant role and output format, plus activity-specific prompts from the CSV library explaining the idea precisely by taking information from the activity object. DeepSeek was selected for cost-effectiveness. Only non-sensitive data is transmitted (activity descriptions, age group, subject) making the choice of LLM not so crucial. 
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{Orchestration_Timeline.png}
+\caption{Orchestration timeline with activities across three organizational planes, showing real-time gap feedback and temporal positioning.}
+\label{fig:timeline}
+\end{figure}
+
 
 \section{Results}
 
@@ -176,28 +190,9 @@ The application integrates DeepSeek AI to generate age-appropriate teaching reso
 
 The web application offers automated lesson generation or manual orchestration control. The timeline (Figure \ref{fig:timeline}) arranges activities in draggable activity cards across three organizational planes (Individual, Team, Class) with left-to-right time progression, displaying real-time gap metrics and goal achievement status. State-space visualization (Figure \ref{fig:graph}) plots learning trajectories in 2D fluency-depth space, with activity effects as rectangles and arrows showing state transitions between starting point (orange X) and goal (blue X).
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\textwidth]{Orchestration_Timeline.png}
-\caption{Orchestration timeline with activities across three organizational planes, showing real-time gap feedback and temporal positioning.}
-\label{fig:timeline}
-\end{figure}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.75\textwidth]{Orchestration_Graph.png}
-\caption{State-space visualization showing learning trajectory through fluency-depth space. Orange X: initial state, blue X: goal state.}
-\label{fig:graph}
-\end{figure}
 
-LLM integration (Figure \ref{fig:teaching}) generates age-appropriate teaching materials including pedagogical suggestions, activity-specific examples, categorized resources (videos, worksheets, simulations), and teaching tips with concrete examples, URLs, and time management strategies.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.95\textwidth]{Teaching_Plan.png}
-\caption{AI-generated teaching plan with lesson-level recommendations and activity-specific teaching materials.}
-\label{fig:teaching}
-\end{figure}
+LLM integration generates age-appropriate teaching materials including pedagogical suggestions, activity-specific examples, categorized resources (videos, worksheets, simulations), and teaching tips with concrete examples, URLs, and time management strategies.
 
 \subsection{System Capabilities and Design Trade-offs}
 
@@ -205,7 +200,7 @@ The system supports flexible-duration activities with effects scaling through li
 
 \subsection{Performance Analysis}
 
-Performance profiling on M2 Macbook Air (Python 3.11, \texttt{cProfile}):
+Performance profiling on M2 Macbook Air (Python 3.11):
 
 \begin{table}[htbp]
 \centering
@@ -230,7 +225,7 @@ The web architecture enables browser-based access without installation and provi
 
 \section{Conclusion}
 
-This project demonstrates that orchestration graph algorithms can be extracted from desktop frameworks and delivered through web browsers. The technical migration succeeded: the system functions equivalently to Samuel's Qt application, with the same recommendation logic and gap evaluation algorithms. The web platform requires no installation and runs on any device with a browser, which theoretically improves accessibility. However, I cannot claim this makes the system more usable without actual teacher testing, which I did not conduct.
+This project demonstrates that orchestration graph algorithms can be extracted from desktop frameworks and delivered through web browsers. The technical migration succeeded: the system functions equivalently to Samuel's Qt application, with the same recommendation logic and gap evaluation algorithms. The web platform requires no installation and runs on any device with a browser, which theoretically improves accessibility. However, I lack further tests with teachers to evaluate the limits of this application. 
 
 \subsection{Key Contributions}
 
@@ -240,15 +235,15 @@ This project makes three concrete contributions beyond Samuel's original work:
 
 \textbf{Distance Metric Correction}: The forward-only distance function fixes a subtle but impactful bug in the original recommendation algorithm. This represents an edge case than can however block an otherwise optimal activity. While this is a small algorithmic change, it's interesting to see how the engine evaluates learning gaps when students have unbalanced skill profiles.
 
-\textbf{LLM-Enhanced Teacher Materials}: The DeepSeek integration generates contextualized teaching resources automatically. However, I must acknowledge this feature's limitations as the prompts for the resource generations where not further studied.  This remains a proof-of-concept rather than a production-ready feature.
+\textbf{LLM-Enhanced Teacher Materials}: The DeepSeek integration generates contextualized teaching resources automatically. However, I must acknowledge this feature's limitations as the prompts for the resource generations where not further studied or engineered.  This remains a proof-of-concept rather than a production-ready feature.
 
 \subsection{Limitations and Reflections}
 
-The greedy recommendation algorithm can make locally optimal choices that prevent reaching the goal. Auto-complete occasionally fails even when valid solutions exist, Samuel's thesis proposes backtracking, which I did not implement. Increasing to hire dimensions to better represent learning may need complications of the engine. The Flask API exposes internal data structures directly, creating tight coupling between frontend and backend—a proper approach would use explicit API schemas like Pydantic or OpenAPI to provide a stable contract.
+The greedy recommendation algorithm can make locally optimal choices that prevent reaching the goal. Auto-complete occasionally fails even when valid solutions exist, Samuel's thesis proposes backtracking, which I did not implement. Increasing to hire dimensions to better represent learning may need complications of the engine. The Flask API exposes internal data structures directly, creating tight coupling between frontend and backend, a better approach could use explicit API schemas like Pydantic or OpenAPI to provide a stable contract.
 
 \subsection{Real-World Testing and Impact}
 
-I tested the system during several workshops I gave and made two friends test it for workshops they were giving. The auto-generated full orchestration graph was not personalised enough but both appreciated manually creating their orchestration graphs, one even adding an activity. LLM-generated examples received mixed feedback: the exercises given were not the bests (although treated subject was complex) but the sources provided were of great use. Maybe refining the prompts would be a good domain to explore. 
+I tested the system during several workshops I gave and made two friends test it for workshops they were giving. The auto-generated full orchestration graph wer not personalised enough but both appreciated manually creating their orchestration graphs, one even adding an activity. LLM-generated examples received mixed feedback: the exercises given were not the best (although treated subjects were complex) but the examples were pertinent and the sources provided of great use. Maybe refining the prompts would be a good domain to explore. 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

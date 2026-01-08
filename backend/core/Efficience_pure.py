@@ -131,7 +131,7 @@ def test_efficience():
         totalRemDistance=1.0
     )
     print(f"Activity with prereq gap: score = {score_c:.4f}")
-    print("(Score is lower because prerequisite work reduces net progress)")
+
 
 
 if __name__ == "__main__":
