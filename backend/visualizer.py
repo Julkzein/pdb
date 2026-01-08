@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 State-space visualization generator
 Creates 2D matplotlib graphs showing pValue transitions
 """
 
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from io import BytesIO

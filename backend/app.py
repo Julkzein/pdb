@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Flask REST API for Orchestration Graph Engine
 Uses pure Python core modules (no Qt dependencies)
@@ -41,7 +40,7 @@ DEFAULT_START = (0.0, 0.0)
 DEFAULT_GOAL = (0.9, 0.9)
 
 
-# ==================== INITIALIZATION ==================== #
+#Init 
 
 def initialize_library():
     """Load activity library from CSV"""
@@ -97,7 +96,7 @@ except Exception as e:
     llm_service = None
 
 
-# ==================== BASIC ENDPOINTS ==================== #
+# Basic Endpoints
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -131,7 +130,7 @@ def get_activities():
     return jsonify(activities)
 
 
-# ==================== GRAPH STATE ENDPOINTS ==================== #
+# Orchestration Graph Endpoints
 
 @app.route('/api/graph/state', methods=['GET'])
 def get_graph_state():
@@ -157,7 +156,7 @@ def reset_graph():
     })
 
 
-# ==================== ACTIVITY MANIPULATION ENDPOINTS ==================== #
+# Activity manip endpoints
 
 @app.route('/api/graph/insert', methods=['POST'])
 def insert_activity():
@@ -296,7 +295,7 @@ def exchange_activities():
         return jsonify({"error": "Failed to exchange activities"}), 400
 
 
-# ==================== GAP & RECOMMENDATION ENDPOINTS ==================== #
+# Gap and reco endpoints
 
 @app.route('/api/graph/gaps', methods=['GET'])
 def get_gaps():
@@ -366,7 +365,7 @@ def get_gap_recommendations():
     })
 
 
-# ==================== AUTO-ADD ENDPOINTS ==================== #
+# Auto add Endpoints
 
 @app.route('/api/graph/auto-add', methods=['POST'])
 def auto_add():
@@ -448,7 +447,7 @@ def auto_complete():
     })
 
 
-# ==================== SAVE/LOAD ENDPOINTS ==================== #
+# Save Endpoints
 
 @app.route('/api/graph/save', methods=['POST'])
 def save_graph():
@@ -547,7 +546,7 @@ def get_saved_files():
     return jsonify(files)
 
 
-# ==================== PRINT/EXPORT ENDPOINTS ==================== #
+# Export Endpoints
 
 @app.route('/api/graph/export-json', methods=['GET'])
 def export_json():
@@ -572,7 +571,7 @@ def print_text():
     })
 
 
-# ==================== CONFIGURATION ENDPOINTS ==================== #
+# Config Endppints
 
 @app.route('/api/config/planes', methods=['GET'])
 def get_planes():
@@ -598,7 +597,7 @@ def get_params():
     })
 
 
-# ==================== ACTIVITY MANAGEMENT ENDPOINTS ==================== #
+# Activity management endpoints
 
 @app.route('/api/activities/create', methods=['POST'])
 def create_activity():
@@ -704,7 +703,7 @@ def reload_library():
         return jsonify({"error": f"Failed to reload library: {str(e)}"}), 500
 
 
-# ==================== LLM ENHANCEMENT ENDPOINT ==================== #
+# LLM Endpoints
 
 @app.route('/api/enhance-orchestration', methods=['POST'])
 def enhance_orchestration():
@@ -767,7 +766,7 @@ def enhance_orchestration():
         }), status_code
 
 
-# ==================== ERROR HANDLERS ==================== #
+# Error handler
 
 @app.route('/api/graph/visualize', methods=['GET'])
 def visualize_graph():
@@ -801,7 +800,7 @@ def internal_error(_):
     return jsonify({"error": "Internal server error"}), 500
 
 
-# ==================== MAIN ==================== #
+#  Main
 
 if __name__ == '__main__':
     print("=" * 60)

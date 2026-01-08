@@ -25,7 +25,7 @@ class LLMService:
             api_key=self.api_key,
             base_url="https://api.deepseek.com",
             timeout=Timeout(
-                connect=30.0,   # 30s to establish connection (was 5s default)
+                connect=30.0,   # 30s to establish connection (5s default)
                 read=600.0,     # 10 minutes to read response
                 write=60.0,     # 1 minute to send request
                 pool=60.0       # 1 minute for connection pooling
@@ -33,7 +33,7 @@ class LLMService:
             max_retries=2  # Retry failed requests twice
         )
 
-        # DeepSeek's latest model (much cheaper than Claude!)
+        # DeepSeek's latest model 
         self.model = "deepseek-chat"
 
         # Store library reference for activity-specific prompts
@@ -78,7 +78,7 @@ class LLMService:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.3,  # Lower temperature = faster, more deterministic responses
+                temperature=0.3,  # Lower temperature for faster, more deterministic responses (to tweak if necessary)
                 max_tokens=3000,
                 response_format={"type": "json_object"}  # Force JSON output
             )
@@ -89,7 +89,7 @@ class LLMService:
             # Parse the response
             content = response.choices[0].message.content
 
-            # Parse JSON from response (should be clean JSON due to response_format)
+            # Parse JSON from response 
             enhancement_data = json.loads(content)
 
             total_time = time.time() - start_time
